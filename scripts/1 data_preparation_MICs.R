@@ -11,16 +11,15 @@ meta_antibio_abbr <- read.csv("data/clean/meta_antibio_abbr.csv", header = T, st
 species <- "Staphylococcus-aureus"
 
 #Load the raw data (long format) 
-raw_MIC <- read.table(paste0("data/raw/",species ,".txt"), header = T, sep = "\t", dec = ",", stringsAsFactors = F)
-colnames(raw_MIC) <- c("genome_name", "genome_id", "antibiotic", "MIC", "measurement_value","laboratory_typing_method","laboratory_typing_version")
+raw_MIC <- read.table(paste0("data/raw/", species ,".txt"), header = T, sep = "\t", dec = ",", stringsAsFactors = F)
+colnames(raw_MIC) <- sapply(strsplit(colnames(raw_MIC), "\\."), function(x) x[2])
+colnames(raw_MIC)[colnames(raw_MIC) == "measurement_value"] <- "MIC"
 
 #Remove all rows without MIC value
 raw_MIC <- raw_MIC[raw_MIC$MIC != "", ]
+table(raw_MIC$measurement_sign)
 
 ####Data cleaning####
-#Pick options
-na_remove <- 100 #minimal number of MIC measurements for testing
-
 #Create clean MIC values data frame
 MIC_df <- raw_MIC %>%
 #clean strings
@@ -28,13 +27,22 @@ MIC_df <- raw_MIC %>%
          genome_id = str_replace_all(genome_id, "\\.", "_")) %>% 
 #add antibiotic Abbreviations
   left_join(meta_antibio_abbr, by = "antibiotic") %>% 
-  select(genome_id, genome_name, antibiotic, abbreviation, MIC) %>% 
+  select(genome_id, genome_name, antibiotic, abbreviation, measurement_sign, MIC) %>% 
   filter(!is.na(MIC)) %>% 
 #take MIC value from antibiotic (not beta lactamase blocker)
   mutate(MIC = sapply(strsplit(MIC, "/"), function(x) as.numeric(x[1]))) %>% 
   mutate(logMIC = log2(MIC)) %>% 
 #remove duplicate rows
   distinct(MIC, genome_id, abbreviation, .keep_all = TRUE)
+
+#Check if there are multiple measurements of a strain/antibiotic combination
+dupli <- MIC_df[, c("genome_id", "antibiotic", "genome_name")] # select columns to check duplicates
+MIC_dupli <- MIC_df[duplicated(dupli) | duplicated(dupli, fromLast = TRUE), ]
+
+MIC_df %>% 
+  group_by(genome_name, genome_id, antibiotic) %>% 
+  
+
 
 #Create wide format of MIC values
 MIC_table <- MIC_df %>% 
@@ -43,6 +51,9 @@ MIC_table <- MIC_df %>%
   column_to_rownames(var = "genome_id")
 
 #Remove antibiotics with to many na's
+#Pick option
+na_remove <- 100 #minimal number of MIC measurements for testing
+
 n_antibiotic <- apply(MIC_table, 2, function(x) sum(!is.na(x)))
 MIC_clean <- MIC_table %>% 
   select(which(n_antibiotic > na_remove))
