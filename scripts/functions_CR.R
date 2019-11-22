@@ -1,5 +1,10 @@
 ###Functions for collateral sensitivity project
 
+#Libraries needed
+library(ggplot2)
+library(RColorBrewer)
+library(gridExtra)
+
 ##t_test_CR.R
 PlotAllTvalues <- function(results, dicho_value, FDR_crit = 0.15) {
   dat <- results[[as.character(dicho_value)]]
@@ -26,35 +31,47 @@ PlotAllTvalues <- function(results, dicho_value, FDR_crit = 0.15) {
   return(plot_)
 }
 
-PlotSignificantTvalue <- function(results, dicho_value, FDR_crit = 0.15) {
+PlotSignificantEffect <- function(results, dicho_value, FDR_crit = 0.15, species) {
   dat <- results[[as.character(dicho_value)]] %>% 
     filter(p_BY < FDR_crit)
+
+  bl <- colorRampPalette(c("#283c82", "white"))(30)                     
+  re <- colorRampPalette(c("#d53397", "white"))(30) 
   
+  limits <- c(-1, 1)*max(dat$effect_size)
   
-  plot_ <- ggplot(dat, aes(x = A, y = B, size = abs(t), color = as.factor(sign(t))))+ 
+  bb <- limits
+  ll <- c("Collateral sensitivity", "Collateral Resistance") # labels.
+  
+  plot_ <- ggplot(dat, aes(x = A, y = B, color = effect_size, size = abs(effect_size))) + 
     geom_point(shape = 15) +
-    scale_size(range = c(3, 10)) +
-    scale_color_manual(values = c("#d53397", "#283c82"), labels = c("Collateral Sensitivity", "Collateral Resitance")) +
+    scale_colour_gradientn(colours = c(re, "white", rev(bl)), limits = limits,
+                           labels = ll, breaks = bb) +
+    scale_size(range = c(5, 10), limits = c(0.1, limits[2])) +
+    scale_x_discrete(expand = expand_scale(mult = 0, add = rep(0.5, 2))) +
+    scale_y_discrete(expand = expand_scale(mult = 0, add = rep(0.5, 2))) +
     coord_fixed() +
     theme(axis.text.x = element_text(angle = 90)) +
-    labs(x = "Anitbiotic A", y = "Antibiotic B", size = "T-value", colour = "Direction",
-         title = paste("Dichotomised on quantile", dicho_value)) +
+    labs(x = "Anitbiotic A", y = paste0("Antibiotic B (dichotomised on quantile ", dicho_value, ")"), size = "Difference in means", colour = "Direction",
+         title = paste("Significant collateral responses", species)) +
     geom_vline(xintercept = seq(1.5, length(unique(dat$A)) - 0.5, 1), colour = "grey60") +
     geom_hline(yintercept = seq(1.5, length(unique(dat$B)) - 0.5, 1), colour = "grey60") +
     theme_bw() +
     theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
-          legend.title = element_text(size = 12)) +
-    guides(color = guide_legend(override.aes = list(size = 4)), 
-           size =  guide_legend(title.theme = element_text(size = 16)))
+          legend.title = element_text(size = 12))
+    # guides(color = guide_legend(override.aes = list(size = 4)), 
+    #        size =  guide_legend(title.theme = element_text(size = 16)))
   
   plot_ <- plot_ + geom_abline(slope = 1, intercept = 0, colour = "grey60")
   
   return(plot_)
 }
 
+
+
 PlotCRDistributions <- function(MIC_clean, results, dicho_value, t_rank = 1, one_direction = TRUE, CResponse = "CS", FDR_crit = 0.15) {
   sign_dat <- results[[as.character(dicho_value)]] %>% 
-    filter(p_BY < FDR_crit) %>% 
+    filter(p_BY < FDR_crit & (sign(t) == c(-1, 1)[CResponse == c("CS", "CR")])) %>% 
     arrange(if(CResponse == "CS") {.$t} else {desc(.$t)})
   
   if (nrow(sign_dat) < 1) {
