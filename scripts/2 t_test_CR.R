@@ -1,7 +1,8 @@
 #T-test for collateral sensitivity on data from data preparation script
 
-#Libraries
+#Libraries and functions
 library(tidyverse)
+source("scripts/functions_CR.R")
 
 ####Import data####
 #Pick species
@@ -107,5 +108,8 @@ plot(log2(MIC_clean$CFZ), log2(MIC_clean$TZP), cex = seq(0.1, 3, length.out = le
 
 hist(log2(MIC_clean$CFZ))
 hist(log2(MIC_clean$CFZ[log2(MIC_clean$TZP) > 6]), xlim = c(0, 6))
+
+r5 <- results[['0.5']]
+sum(r5$p_BY < 0.05 & r5$t < 0)
 
 

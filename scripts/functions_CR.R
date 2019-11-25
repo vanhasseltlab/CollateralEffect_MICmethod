@@ -41,7 +41,7 @@ PlotSignificantEffect <- function(results, dicho_value, FDR_crit = 0.15, species
   limits <- c(-1, 1)*max(dat$effect_size)
   
   bb <- limits
-  ll <- c("Collateral sensitivity", "Collateral Resistance") # labels.
+  ll <- c("Collateral Sensitivity", "Collateral Resistance") # labels.
   
   plot_ <- ggplot(dat, aes(x = A, y = B, color = effect_size, size = abs(effect_size))) + 
     geom_point(shape = 15) +

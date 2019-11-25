@@ -22,7 +22,6 @@
 # Rename the numeric variables to their original names, for better script readabiliy.
 filename=${1}
 
-# Install PATRIC command line interface (if not yet installed)
 if [[ $(dpkg-query -W patric-cli | wc -l) -eq 0 ]];then   #Checks for PCLI
   curl -O -L https://github.com/PATRIC3/PATRIC-distribution/releases/download/1.018/patric-cli-1.018.deb
   sudo dpkg -i patric-cli-1.018.deb
@@ -54,8 +53,8 @@ do
 # $9 	  measurement_unit
 # $10 	laboratory_typing_method
 # $11 	laboratory_typing_method_version
-  p3-drug-amr-data --equal laboratory_typing_method,MIC --equal genome_name,${org} \
-  --attr genome_name,genome_id,antibiotic,measurement_sign,measurement_value,measurement_unit,resistant_phenotype,laboratory_typing_method_version > data/${org}.txt 
+  p3-drug-amr-data --equal laboratory_typing_method,MIC --equal genome_name,${org} --ne laboratory_typing_platform,population\ analysis \
+  --attr genome_name,genome_id,antibiotic,measurement_sign,measurement_value,measurement_unit,resistant_phenotype,laboratory_typing_platform > data/${org}.txt 
 done < ${filename}
 
 
