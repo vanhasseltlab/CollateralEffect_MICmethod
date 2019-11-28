@@ -50,9 +50,9 @@ for (crit in 1:length(results)) {
      
       if (any(length(X_w) < 2, length(Y) < 2)) next()
       
-      t_test_i <- t.test(Y, X_w, var.equal = TRUE, alternative = direction)
+      t_test_i <- t.test(X_w, Y, var.equal = TRUE, alternative = direction)
       t_test[counter, 3:4] <- c(t_test_i$statistic, t_test_i$p.value)
-      t_test[counter, "effect_size"] <- -diff(t_test_i$estimate)
+      t_test[counter, "effect_size"] <- mean(c(X_w, Y)) - mean(Y)
     }
   }
   result_crit <- data.frame(t_test, p_BY = p.adjust(t_test$p, method = "BY"))
@@ -97,7 +97,9 @@ for (ra in 1:sum(results[['0.5']]$p_BY < 0.05 & results[['0.5']]$t < 0))  {
 dev.off()
 
 
-View(results[['0.5']])
+
+
+
 
 ###experimenting
 
@@ -112,4 +114,46 @@ hist(log2(MIC_clean$CFZ[log2(MIC_clean$TZP) > 6]), xlim = c(0, 6))
 r5 <- results[['0.5']]
 sum(r5$p_BY < 0.05 & r5$t < 0)
 
+
+View(results[['0.5']])
+
+r5 <- results[['0.5']] %>% 
+  filter(p_BY < 0.05) %>% 
+  arrange(t)
+sum(r5$t<0)
+sum(r5$t>0)
+nrow(MIC_clean)
+
+
+#Plot number of observations per antibiotic
+meta_antibio_abbr <- read.csv("data/clean/meta_antibio_abbr.csv", header = T, stringsAsFactors = F)
+table_anti <- data.frame(Frequency = colSums(!is.na(MIC_clean)), abbreviation = names(MIC_clean))
+table_anti <- table_anti %>% 
+  left_join(meta_antibio_abbr) %>% 
+  mutate(Antibiotic = capitalize(antibiotic))
+
+p <- ggplot(data = table_anti, aes(x = Antibiotic, y = Frequency)) +
+  #geom_hline(yintercept =, colour = "light pink") +
+  geom_bar(stat = "identity") +
+  theme_bw()
+p + coord_flip()+ scale_y_continuous(expand = c(0, 0), limits = c(0, nrow(MIC_clean)))
+
+table_anti
+
+best_df <- r5[c(1:5,nrow(r5):(nrow(r5) - 4)), ]
+
+best_df[, c(4, 8)] <- apply(best_df[, c(4, 8)], 2, function(x) formatC(x, format = "e", digits = 2))
+
+best_df[, c(7, 3)] <- apply(best_df[, c(7, 3)], 2, function(x) round(x, digits = 2))
+
+##for in the article
+
+table_anti
+best_df
+
+
+pdf(file = paste0("results/figures/significant_distributions", species, ".pdf"), height = 7, width = 9)
+  PlotCRDistributions(MIC_clean, results, 0.5, t_rank = 1, one_direction = FALSE, CResponse = "CS")
+  PlotCRDistributions(MIC_clean, results, 0.5, t_rank = 1, one_direction = FALSE, CResponse = "CR")
+dev.off()
 

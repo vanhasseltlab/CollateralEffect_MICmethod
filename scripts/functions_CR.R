@@ -4,6 +4,7 @@
 library(ggplot2)
 library(RColorBrewer)
 library(gridExtra)
+library(grid)
 
 ##t_test_CR.R
 PlotAllTvalues <- function(results, dicho_value, FDR_crit = 0.15) {
@@ -72,7 +73,7 @@ PlotSignificantEffect <- function(results, dicho_value, FDR_crit = 0.15, species
 PlotCRDistributions <- function(MIC_clean, results, dicho_value, t_rank = 1, one_direction = TRUE, CResponse = "CS", FDR_crit = 0.15) {
   sign_dat <- results[[as.character(dicho_value)]] %>% 
     filter(p_BY < FDR_crit & (sign(t) == c(-1, 1)[CResponse == c("CS", "CR")])) %>% 
-    arrange(if(CResponse == "CS") {.$t} else {desc(.$t)})
+    arrange(desc(abs(effect_size)))
   
   if (nrow(sign_dat) < 1) {
     message("No significant collateral sensitivity, plotting non significant finding with largest T")
@@ -97,18 +98,18 @@ PlotCRDistributions <- function(MIC_clean, results, dicho_value, t_rank = 1, one
   ran <- range(dat$A) + (0.5 * c(-1, + 1))
   ticks <- floor(seq(ran[1], ran[2] + 2))
   p_A <- dat %>% 
-    ggplot(aes(x = A, y = ..prop..)) +
+    ggplot(aes(x = A, y = ..count..)) +
     geom_bar(stat = "count", width = 0.5, position = "dodge") +
     labs(x = "log2(MIC)", y = "Probability mass", title = comb[1]) +
     scale_x_continuous(breaks = ticks, limits = ran) +
     scale_y_continuous(expand = expand_scale(mult = c(0, .05)), labels = function(x) sprintf("%.2f", x)) +
-    geom_vline(xintercept = mean(dat$A, na.rm = T), colour = "#d53397") +
+    geom_vline(xintercept = mean(dat$A), colour = "#d53397") +
     theme_bw() +
     theme(panel.grid.minor.x = element_blank())
   
   p_AB <- dat %>% 
     filter(B >= d & !is.na(B)) %>% 
-    ggplot((aes(x = A, y = ..prop..))) +
+    ggplot((aes(x = A, y = ..count..))) +
     geom_bar(stat = "count", width = 0.5, position = "dodge") +
     labs(x = "log2(MIC)", y = "Probability mass", 
          title = paste0(comb[1], "|", comb[2], " > ", d)) +
@@ -154,7 +155,113 @@ PlotCRDistributions <- function(MIC_clean, results, dicho_value, t_rank = 1, one
     theme_bw() +
     theme(panel.grid.minor.x = element_blank())
   
-  return(grid.arrange(p_A, p_B, p_AB, p_BA, ncol = 2, nrow = 2))
+  #remove all labels from the plots
+  p_BA <- p_BA + theme(axis.title.x = element_blank(), axis.title.y = element_blank())
+  p_B <- p_B + theme(axis.title.x = element_blank(), axis.title.y = element_blank())
+  p_AB <- p_AB + theme(axis.title.x = element_blank(), axis.title.y = element_blank())
+  p_A <- p_A + theme(axis.title.x = element_blank(), axis.title.y = element_blank())
+
+  return(grid.arrange(p_A, p_B, p_AB, p_BA, ncol = 2, nrow = 2, bottom = textGrob(label = expression(log[2]*"(MIC)")), 
+                      left = "Probability mass"))
+  
+}
+
+
+PlotStackDistribution <- function(MIC_clean, results, dicho_value, t_rank = 1, one_direction = TRUE, CResponse = "CS", FDR_crit = 0.15) {
+  
+  sign_dat <- results[[as.character(dicho_value)]] %>% 
+    filter(p_BY < FDR_crit & (sign(t) == c(-1, 1)[CResponse == c("CS", "CR")])) %>% 
+    arrange(desc(abs(effect_size)))
+
+  if (nrow(sign_dat) < 1) {
+    message("No significant collateral sensitivity, plotting non significant finding with largest T")
+    sign_dat <- results[[as.character(dicho_value)]] %>% 
+      arrange(t) %>% 
+      slice(1)
+    t_rank <- 1
+  }
+  if (nrow(sign_dat) < t_rank) {
+    message(paste0("No", t_rank, "th significant collateral sensitivity, plotting significant finding with largest T"))
+    t_rank <- 1
+  }
   
   
+  #for all combinations?
+  comb <- unlist(sign_dat[t_rank, 1:2])
+  d <- sign_dat[t_rank, "d"]
+  dat <- log2(MIC_clean[, comb])
+  dat <- dat[!is.na(dat[, 1]), ]
+  names(dat) <- c("A", "B")
+  
+  dat$Condition <- as.factor(ifelse(dat$B >= d & !is.na(dat$B), "B == R", "B != R"))
+  p_A <- dat %>% 
+    ggplot(aes(x = A, y = ..prop.., group = Condition, fill = Condition)) +
+    geom_bar(stat = "count", width = 0.5, position = "stack") +
+    labs(x = "log2(MIC)", y = "Probability mass", title = comb[1]) +
+    #scale_x_continuous(breaks = ticks, limits = ran) +
+    #scale_y_continuous(expand = expand_scale(mult = c(0, .05)), labels = function(x) sprintf("%.2f", x)) +
+    geom_vline(xintercept = mean(dat$A), colour = "#283c82") +
+    scale_fill_manual(values = c("#283c82", "#d53397")) +
+    theme_bw() +
+    theme(panel.grid.minor.x = element_blank())
+  
+  
+  ran <- range(dat$A) + (0.5 * c(-1, + 1))
+  ticks <- floor(seq(ran[1], ran[2] + 2))
+  p_A <- dat %>% 
+    ggplot(aes(x = A, y = ..count..)) +
+    geom_bar(stat = "count", width = 0.5, position = "dodge") +
+    labs(x = "log2(MIC)", y = "Probability mass", title = comb[1]) +
+    scale_x_continuous(breaks = ticks, limits = ran) +
+    scale_y_continuous(expand = expand_scale(mult = c(0, .05)), labels = function(x) sprintf("%.2f", x)) +
+    geom_vline(xintercept = mean(dat$A), colour = "#d53397") +
+    theme_bw() +
+    theme(panel.grid.minor.x = element_blank())
+  
+
+  
+  if (one_direction) {
+    return(grid.arrange(p_A, p_AB, ncol = 1))
+  }
+  #Show directionality
+  new_dat <- results[[as.character(dicho_value)]]
+  rownames(new_dat) <- paste(new_dat$A, new_dat$B, sep = "_")
+  comb <- unlist(sign_dat[t_rank, 2:1])
+  d <- new_dat[paste(comb, collapse = "_"), "d"]
+  dat <- log2(MIC_clean[, comb])
+  dat <- dat[!is.na(dat[, 1]), ]
+  names(dat) <- c("A", "B")
+  
+  ran <- range(dat$A) + (0.5 * c(-1, + 1))
+  ticks <- floor(seq(ran[1], ran[2] + 2))
+  p_B <- dat %>% 
+    ggplot(aes(x = A, y = ..prop..)) +
+    geom_bar(stat = "count", width = 0.5, position = "dodge") +
+    labs(x = "log2(MIC)", y = "Probability mass", title = comb[1]) +
+    scale_x_continuous(breaks = ticks, limits = ran) +
+    scale_y_continuous(expand = expand_scale(mult = c(0, .05)), labels = function(x) sprintf("%.2f", x)) +
+    geom_vline(xintercept = mean(dat$A, na.rm = T), colour = "#d53397") +
+    theme_bw() +
+    theme(panel.grid.minor.x = element_blank())
+  
+  p_BA <- dat %>% 
+    filter(B >= d & !is.na(B)) %>% 
+    ggplot((aes(x = A, y = ..prop..))) +
+    geom_bar(stat = "count", width = 0.5, position = "dodge") +
+    labs(x = "log2(MIC)", y = "Probability mass", 
+         title = paste0(comb[1], "|", comb[2], " > ", d)) +
+    scale_x_continuous(breaks = ticks, limits = ran) +
+    scale_y_continuous(expand = expand_scale(mult = c(0, .05)), labels = function(x) sprintf("%.2f", x)) +
+    geom_vline(xintercept = mean(dat$A[dat$B >= d & !is.na(dat$B)], na.rm = T), colour = "#d53397") +
+    theme_bw() +
+    theme(panel.grid.minor.x = element_blank())
+  
+  #remove all labels from the plots
+  p_BA <- p_BA + theme(axis.title.x = element_blank(), axis.title.y = element_blank())
+  p_B <- p_B + theme(axis.title.x = element_blank(), axis.title.y = element_blank())
+  p_AB <- p_AB + theme(axis.title.x = element_blank(), axis.title.y = element_blank())
+  p_A <- p_A + theme(axis.title.x = element_blank(), axis.title.y = element_blank())
+  
+  return(grid.arrange(p_A, p_B, p_AB, p_BA, ncol = 2, nrow = 2, bottom = textGrob(label = expression(log[2]*"(MIC)")), 
+                      left = "Probability mass"))
 }
