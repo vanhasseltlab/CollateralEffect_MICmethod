@@ -36,19 +36,22 @@ PlotSignificantEffect <- function(results, dicho_value, FDR_crit = 0.15, species
   dat <- results[[as.character(dicho_value)]] %>% 
     filter(p_BY < FDR_crit)
 
-  bl <- colorRampPalette(c("#283c82", "white"))(30)                     
-  re <- colorRampPalette(c("#d53397", "white"))(30) 
+  bl <- colorRampPalette(c("#283c82", "white"))(30) [c(1:10, seq(11, 30, by = 2))] 
+  #colorRampPalette(c("red","#d53397"))(30)
+  re <- colorRampPalette(c("#db0087", "white"))(30)[c(1:10, seq(11, 30, by = 2))]
   
   limits <- c(-1, 1)*max(dat$effect_size)
   
   bb <- limits
   ll <- c("Collateral Sensitivity", "Collateral Resistance") # labels.
   
-  plot_ <- ggplot(dat, aes(x = A, y = B, color = effect_size, size = abs(effect_size))) + 
-    geom_point(shape = 15) +
+  #plot_ <- ggplot(dat, aes(x = A, y = B, color = effect_size, size = abs(effect_size))) +
+  plot_ <- ggplot(dat, aes(x = A, y = B, color = effect_size)) +
+  #  geom_point(shape = 15) +
+    geom_point(shape = 15, size = 10) +
     scale_colour_gradientn(colours = c(re, "white", rev(bl)), limits = limits,
                            labels = ll, breaks = bb) +
-    scale_size(range = c(5, 10), limits = c(0.1, limits[2])) +
+  # scale_size(range = c(5, 10), limits = c(0.0001, limits[2])) +
     scale_x_discrete(expand = expand_scale(mult = 0, add = rep(0.5, 2))) +
     scale_y_discrete(expand = expand_scale(mult = 0, add = rep(0.5, 2))) +
     coord_fixed() +
@@ -60,8 +63,6 @@ PlotSignificantEffect <- function(results, dicho_value, FDR_crit = 0.15, species
     theme_bw() +
     theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
           legend.title = element_text(size = 12))
-    # guides(color = guide_legend(override.aes = list(size = 4)), 
-    #        size =  guide_legend(title.theme = element_text(size = 16)))
   
   plot_ <- plot_ + geom_abline(slope = 1, intercept = 0, colour = "grey60")
   
@@ -193,37 +194,47 @@ PlotStackDistribution <- function(MIC_clean, results, dicho_value, t_rank = 1, o
   dat <- dat[!is.na(dat[, 1]), ]
   names(dat) <- c("A", "B")
   
-  dat$Condition <- as.factor(ifelse(dat$B >= d & !is.na(dat$B), "B == R", "B != R"))
-  p_A <- dat %>% 
-    ggplot(aes(x = A, y = ..prop.., group = Condition, fill = Condition)) +
-    geom_bar(stat = "count", width = 0.5, position = "stack") +
-    labs(x = "log2(MIC)", y = "Probability mass", title = comb[1]) +
-    #scale_x_continuous(breaks = ticks, limits = ran) +
-    #scale_y_continuous(expand = expand_scale(mult = c(0, .05)), labels = function(x) sprintf("%.2f", x)) +
-    geom_vline(xintercept = mean(dat$A), colour = "#283c82") +
-    scale_fill_manual(values = c("#283c82", "#d53397")) +
-    theme_bw() +
-    theme(panel.grid.minor.x = element_blank())
-  
-  
+  dat$Condition <- as.factor(ifelse(dat$B >= d & !is.na(dat$B), 
+                                    paste0(comb[1],"|", comb[2]," \u2265 ", d), 
+                                    paste0(comb[1])))
+  means <- data.frame(mean = c(mean(dat$A), mean(dat$A[dat$Condition == paste0(comb[1],"|", comb[2]," \u2265 ", d)])), 
+                      Means = sort(as.character(unique(dat$Condition))))
   ran <- range(dat$A) + (0.5 * c(-1, + 1))
   ticks <- floor(seq(ran[1], ran[2] + 2))
-  p_A <- dat %>% 
-    ggplot(aes(x = A, y = ..count..)) +
-    geom_bar(stat = "count", width = 0.5, position = "dodge") +
-    labs(x = "log2(MIC)", y = "Probability mass", title = comb[1]) +
-    scale_x_continuous(breaks = ticks, limits = ran) +
-    scale_y_continuous(expand = expand_scale(mult = c(0, .05)), labels = function(x) sprintf("%.2f", x)) +
-    geom_vline(xintercept = mean(dat$A), colour = "#d53397") +
-    theme_bw() +
-    theme(panel.grid.minor.x = element_blank())
+  
+  plotPanel <- function(dat) {
+    
+    plotje <- dat %>% 
+      ggplot(aes(x = A, y = ..count.., group = Condition, fill = Condition)) +
+      geom_bar(stat = "count", width = 0.6, position = "stack") +
+      labs(x = expression(log[2]*"(MIC)"), y = "Counts", title = comb[1]) +
+      #scale_y_continuous(expand = expand_scale(mult = c(0, .05)), labels = function(x) sprintf("%.2f", x)) +
+      scale_y_continuous(expand = expand_scale(mult = c(0, .05))) +
+      scale_x_continuous(breaks = ticks, limits = ran) +
+      geom_vline(data = means, aes(xintercept = mean), colour = "white") +
+      geom_vline(data = means, aes(xintercept = mean, colour = Means), show.legend  = TRUE, linetype = 2) +
+      scale_fill_manual(values = c("#283c82", "#d53397")) +
+      scale_colour_manual(labels = c(bquote(hat(mu)[.(as.character(means$Means[1]))]),
+                                     bquote(hat(mu)[.(as.character(means$Means[2]))])), 
+                          values = c("#283c82", "#d53397")) +
+      theme_bw() +
+      theme(panel.grid.minor.x = element_blank(), legend.position = "bottom",
+       #     legend.background = element_rect(fill = "transparent", size = 0.5, linetype = "solid", colour = "black"),
+            legend.box = "horizontal", legend.direction = "vertical") + 
+      guides(fill = guide_legend(override.aes = list(linetype = 0), order = 1, title = NULL), 
+             colour = guide_legend(order = 2, title = NULL, label.theme = element_text(size = 13)))
+      
+  
+    return(plotje)
+  }
   
 
+  p_A <- plotPanel(dat)
   
   if (one_direction) {
-    return(grid.arrange(p_A, p_AB, ncol = 1))
+    return(p_A)
   }
-  #Show directionality
+  
   new_dat <- results[[as.character(dicho_value)]]
   rownames(new_dat) <- paste(new_dat$A, new_dat$B, sep = "_")
   comb <- unlist(sign_dat[t_rank, 2:1])
@@ -231,37 +242,18 @@ PlotStackDistribution <- function(MIC_clean, results, dicho_value, t_rank = 1, o
   dat <- log2(MIC_clean[, comb])
   dat <- dat[!is.na(dat[, 1]), ]
   names(dat) <- c("A", "B")
-  
+  dat$Condition <- as.factor(ifelse(dat$B >= d & !is.na(dat$B), 
+                                    paste0(comb[1],"|", comb[2]," > ", d), 
+                                    paste0(comb[1])))
+  means <- data.frame(mean = c(mean(dat$A), mean(dat$A[dat$Condition == paste0(comb[1],"|", comb[2]," > ", d)])), 
+                      Means = sort(as.character(unique(dat$Condition))))
   ran <- range(dat$A) + (0.5 * c(-1, + 1))
   ticks <- floor(seq(ran[1], ran[2] + 2))
-  p_B <- dat %>% 
-    ggplot(aes(x = A, y = ..prop..)) +
-    geom_bar(stat = "count", width = 0.5, position = "dodge") +
-    labs(x = "log2(MIC)", y = "Probability mass", title = comb[1]) +
-    scale_x_continuous(breaks = ticks, limits = ran) +
-    scale_y_continuous(expand = expand_scale(mult = c(0, .05)), labels = function(x) sprintf("%.2f", x)) +
-    geom_vline(xintercept = mean(dat$A, na.rm = T), colour = "#d53397") +
-    theme_bw() +
-    theme(panel.grid.minor.x = element_blank())
+  p_B <- plotPanel(dat) 
   
-  p_BA <- dat %>% 
-    filter(B >= d & !is.na(B)) %>% 
-    ggplot((aes(x = A, y = ..prop..))) +
-    geom_bar(stat = "count", width = 0.5, position = "dodge") +
-    labs(x = "log2(MIC)", y = "Probability mass", 
-         title = paste0(comb[1], "|", comb[2], " > ", d)) +
-    scale_x_continuous(breaks = ticks, limits = ran) +
-    scale_y_continuous(expand = expand_scale(mult = c(0, .05)), labels = function(x) sprintf("%.2f", x)) +
-    geom_vline(xintercept = mean(dat$A[dat$B >= d & !is.na(dat$B)], na.rm = T), colour = "#d53397") +
-    theme_bw() +
-    theme(panel.grid.minor.x = element_blank())
+  p_A <- p_A + theme(axis.title.y = element_blank())
+  p_B <- p_B + theme(axis.title.y = element_blank())
   
-  #remove all labels from the plots
-  p_BA <- p_BA + theme(axis.title.x = element_blank(), axis.title.y = element_blank())
-  p_B <- p_B + theme(axis.title.x = element_blank(), axis.title.y = element_blank())
-  p_AB <- p_AB + theme(axis.title.x = element_blank(), axis.title.y = element_blank())
-  p_A <- p_A + theme(axis.title.x = element_blank(), axis.title.y = element_blank())
-  
-  return(grid.arrange(p_A, p_B, p_AB, p_BA, ncol = 2, nrow = 2, bottom = textGrob(label = expression(log[2]*"(MIC)")), 
-                      left = "Probability mass"))
+  return(grid.arrange(p_A, p_B, ncol = 2, left = textGrob("Counts", hjust = -0.45, rot = 90)))
 }
+PlotStackDistribution(MIC_clean, results, 0.5, t_rank = 1, one_direction = FALSE, CResponse = "CS")

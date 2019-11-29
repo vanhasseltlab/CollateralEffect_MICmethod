@@ -50,9 +50,9 @@ for (crit in 1:length(results)) {
      
       if (any(length(X_w) < 2, length(Y) < 2)) next()
       
-      t_test_i <- t.test(X_w, Y, var.equal = TRUE, alternative = direction)
+      t_test_i <- t.test(Y, X_w, var.equal = TRUE, alternative = direction)
       t_test[counter, 3:4] <- c(t_test_i$statistic, t_test_i$p.value)
-      t_test[counter, "effect_size"] <- mean(c(X_w, Y)) - mean(Y)
+      t_test[counter, "effect_size"] <-  mean(Y) - mean(c(X_w, Y))
     }
   }
   result_crit <- data.frame(t_test, p_BY = p.adjust(t_test$p, method = "BY"))
@@ -96,6 +96,11 @@ for (ra in 1:sum(results[['0.5']]$p_BY < 0.05 & results[['0.5']]$t < 0))  {
 }
 dev.off()
 
+pdf(file = paste0("results/figures/distribution_stacked_", species, ".pdf"), height = 5, width = 9)
+  PlotStackDistribution(MIC_clean, results, 0.5, t_rank = 1, one_direction = FALSE, CResponse = "CS")
+  PlotStackDistribution(MIC_clean, results, 0.5, t_rank = 1, one_direction = FALSE, CResponse = "CR")
+dev.off()
+
 
 
 
@@ -126,6 +131,7 @@ nrow(MIC_clean)
 
 
 #Plot number of observations per antibiotic
+library(R.utils)
 meta_antibio_abbr <- read.csv("data/clean/meta_antibio_abbr.csv", header = T, stringsAsFactors = F)
 table_anti <- data.frame(Frequency = colSums(!is.na(MIC_clean)), abbreviation = names(MIC_clean))
 table_anti <- table_anti %>% 
