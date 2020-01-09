@@ -21,9 +21,11 @@ direction <- c("two.sided", "less", "greater")[c("both", "CS", "CR") == CRespons
 
 antibiotics <- colnames(MIC_clean)
 n <- length(antibiotics)
-t_test <- as.data.frame(matrix(0, nrow = n*(n - 1), ncol = 7))
-names(t_test) <- c("A", "B", "t", "p", "n", "d", "effect_size")
+t_test <- as.data.frame(matrix(0, nrow = n*(n - 1), ncol = 8))
+names(t_test) <- c("A", "B", "t", "p", "n", "d", "effect_size", "n_cond")
 t_test$p <- 1
+t_test$mean_Y <- 999
+t_test$mean_X <- 999
 
 for (crit in 1:length(results)) {
   counter <- 0
@@ -47,12 +49,18 @@ for (crit in 1:length(results)) {
       
       X_w <- dat[dat[, 2] < criterium | is.na(dat[, 2]), 1]
       Y <- dat[dat[, 2] >= criterium & !is.na(dat[, 2]), 1]
+      
+      t_test[counter, "mean_Y"] <- mean(2^c(X_w, Y))
+      t_test[counter, "mean_X"] <- mean(2^Y)
+      t_test[counter, "n_cond"] <- length(Y)
      
       if (any(length(X_w) < 2, length(Y) < 2)) next()
       
       t_test_i <- t.test(Y, X_w, var.equal = TRUE, alternative = direction)
       t_test[counter, 3:4] <- c(t_test_i$statistic, t_test_i$p.value)
       t_test[counter, "effect_size"] <-  mean(Y) - mean(c(X_w, Y))
+      
+
     }
   }
   result_crit <- data.frame(t_test, p_BY = p.adjust(t_test$p, method = "BY"))
@@ -104,8 +112,6 @@ dev.off()
 
 
 
-
-
 ###experimenting
 
 quantile(log2(MIC_clean$AMK), c(0.4, 0.5, 0.6, 0.8, 0.9), na.rm = T)
@@ -120,14 +126,16 @@ r5 <- results[['0.5']]
 sum(r5$p_BY < 0.05 & r5$t < 0)
 
 
-View(results[['0.5']])
-
 r5 <- results[['0.5']] %>% 
   filter(p_BY < 0.05) %>% 
   arrange(t)
 sum(r5$t<0)
 sum(r5$t>0)
 nrow(MIC_clean)
+
+#Calculate foldchange
+r5$fold_change <- r5$mean_X/r5$mean_Y
+r5$log2_fold_change <- log2(r5$fold_change)
 
 
 #Plot number of observations per antibiotic
@@ -155,11 +163,31 @@ best_df[, c(7, 3)] <- apply(best_df[, c(7, 3)], 2, function(x) round(x, digits =
 ##for in the article
 
 table_anti
-best_df
+selectedAB<- unique(unlist(best_df[c(1:3, 6:8), 1:2]))
 
+pdf(file = paste0("results/figures/significant_selected_", species, ".pdf"), height = 5, width = 7)
+  print(PlotSignificantEffect(results, 0.5, FDR_crit = 0.05, species = species, selectedAB = selectedAB))
+dev.off()
+
+pdf(file = paste0("results/figures/t_allcomparisons_median_", species, ".pdf"), height = 7, width = 9)
+  print(PlotSignificantEffect(results, 0.5, FDR_crit = 0.05, species = species))
+dev.off()
 
 pdf(file = paste0("results/figures/significant_distributions", species, ".pdf"), height = 7, width = 9)
   PlotCRDistributions(MIC_clean, results, 0.5, t_rank = 1, one_direction = FALSE, CResponse = "CS")
   PlotCRDistributions(MIC_clean, results, 0.5, t_rank = 1, one_direction = FALSE, CResponse = "CR")
 dev.off()
+
+print(PlotSignificantEffect(results, 0.5, FDR_crit = 0.05, species = species, selectedAB = selectedAB))
+
+pdf(file = paste0("results/figures/largest_distributions", species, ".pdf"), height = 5, width = 9)
+  PlotStackDistribution(MIC_clean, results, 0.5, one_direction = FALSE, CResponse = "CS", whichAB = c("CFZ", "FOX"))
+  PlotStackDistribution(MIC_clean, results, 0.5, one_direction = FALSE, CResponse = "CR", whichAB = c("LVX", "CIP"))
+dev.off()
+
+pdf(file = paste0("results/figures/largest_distributions2", species, ".pdf"), height = 5, width = 9)
+PlotStackDistribution(MIC_clean, results, 0.5, one_direction = FALSE, CResponse = "CR", whichAB = c("CAZ", "FEP"))
+dev.off()
+
+
 
