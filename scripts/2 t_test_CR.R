@@ -6,7 +6,7 @@ source("scripts/functions_CR.R")
 
 ####Import data####
 #Pick species
-species <- "Escherichia-coli"
+species <- "Pseudomonas-aeruginosa"
 
 load(paste0("data/clean/MIC_clean_", species,".Rdata"))
 
@@ -72,13 +72,22 @@ for (crit in 1:length(results)) {
 #Plot results
 #Overview plot
 
-pdf(file = paste0("results/figures/t_allcomparisons_", species, ".pdf"), height = 7, width = 9)
+pdf(file = paste0("results/figures/t_allcomparisons_", species, ".pdf"), height = 7*0.8, width = 9*0.8)
 print(PlotSignificantEffect(results, 0.4, FDR_crit = 0.05, species = species))
 print(PlotSignificantEffect(results, 0.5, FDR_crit = 0.05, species = species))
 print(PlotSignificantEffect(results, 0.6, FDR_crit = 0.05, species = species))
 print(PlotSignificantEffect(results, 0.7, FDR_crit = 0.05, species = species))
 print(PlotSignificantEffect(results, 0.8, FDR_crit = 0.05, species = species))
 print(PlotSignificantEffect(results, 0.9, FDR_crit = 0.05, species = species))
+dev.off()
+
+pdf(file = paste0("results/figures/t_allcomparisons_", species, "_noFDR.pdf"), height = 7*0.8, width = 9*0.8)
+print(PlotSignificantEffect(results, 0.4, FDR_crit = 1, species = species))
+print(PlotSignificantEffect(results, 0.5, FDR_crit = 1, species = species))
+print(PlotSignificantEffect(results, 0.6, FDR_crit = 1, species = species))
+print(PlotSignificantEffect(results, 0.7, FDR_crit = 1, species = species))
+print(PlotSignificantEffect(results, 0.8, FDR_crit = 1, species = species))
+print(PlotSignificantEffect(results, 0.9, FDR_crit = 1, species = species))
 dev.off()
 
 
@@ -116,6 +125,106 @@ dev.off()
 
 quantile(log2(MIC_clean$AMK), c(0.4, 0.5, 0.6, 0.8, 0.9), na.rm = T)
 quantile(log2(MIC_clean$TZP), c(0.4, 0.5, 0.6, 0.8, 0.9), na.rm = T)
+
+quantiles <- matrix(99, ncol = 6, nrow = ncol(MIC_clean))
+rownames(quantiles) <- colnames(MIC_clean)
+colnames(quantiles) <- c(0.4, 0.5, 0.6, 0.7, 0.8, 0.9)
+for (i in 1:ncol(MIC_clean)) {
+  quantiles[i, ] <- quantile(log2(MIC_clean[, i]), c(0.4, 0.5, 0.6, 0.7, 0.8, 0.9), na.rm = T)
+}
+
+sapply(apply(quantiles, 1, unique), length)
+
+all_ts <- lapply(results, function(x) x$t)
+all_ts <- as.data.frame(all_ts)
+rownames(all_ts) <- r5$pair
+colnames(all_ts) <- c(0.4, 0.5, 0.6, 0.7, 0.8, 0.9)
+
+
+all_criterions <- as.data.frame(lapply(results, function(x) x$d))
+colnames(all_criterions) <- c(0.4, 0.5, 0.6, 0.7, 0.8, 0.9)
+
+all_criterions$index <- all_ts$index <- 1:nrow(all_ts)
+
+
+t_per_crit_all <- all_ts %>% 
+  mutate(pair = paste(results$`0.4`$A, results$`0.4`$B, sep = "_"),
+         A = results$`0.4`$A,
+         B = results$`0.4`$B) %>% 
+  pivot_longer(-c(index, pair, A, B), names_to = "quantile", values_to = "t") %>% 
+  left_join(all_criterions %>%  
+              pivot_longer(-index, names_to = "quantile", values_to = "criterion"))
+
+t_per_crit <- t_per_crit_all %>% 
+  filter(!duplicated(paste(t, criterion)))
+
+ggplot(t_per_crit, aes(x = pair, y = t, colour = pair)) +
+  geom_boxplot() +
+  #geom_vline(xintercept = 1:380) +
+  #geom_point() +
+  coord_flip() +
+  theme_bw() +
+  theme(legend.position = "none")
+
+within_variance <- tapply(t_per_crit$t, t_per_crit$index, var)
+within_variance[is.na(within_variance)] <- 0
+within_mean <- tapply(t_per_crit$t, t_per_crit$index, mean)
+
+hist(sqrt(within_variance), breaks = 20, yaxs = "i")
+
+plot(sqrt(within_variance), within_mean)
+ind <- abs(t_per_crit$t) > 5
+points(sqrt(within_variance[ind]), within_mean[ind], pch = 16, col = "red")
+
+plot(sqrt(within_variance), r5$t)
+
+sum(within_variance == 0)
+
+
+table(tapply(t_per_crit$criterion, t_per_crit$index, length))
+t_per_crit$quantile <- as.numeric(t_per_crit$quantile)
+ind_more <- t_per_crit$index %in% (1:380)[tapply(t_per_crit$quantile, t_per_crit$index, function(x) length(x) == 2)]
+
+
+
+plot_changes_over_quant <- ggplot(t_per_crit_all, aes(x = as.numeric(quantile), y = t)) +
+  #geom_point(aes(group = pair, colour = A)) +
+  geom_line(aes(group = pair, colour = A)) +
+  geom_hline(yintercept = 0, colour = "black") +
+  theme_bw() +
+  labs(x = "Dichotomization quantile", y = "T-statistic") +
+  facet_wrap(~ B, ncol = 4) +
+  #geom_smooth(colour = "black") +
+  theme(legend.position = "none")
+
+pdf("results/figures/effect_of_dichotomization.pdf", height = 7, width = 5.5)
+print(plot_changes_over_quant)
+dev.off()
+
+plot_changes_over_crit <- ggplot(t_per_crit_all, aes(x = as.numeric(criterion), y = t)) +
+  #geom_point(aes(group = pair, colour = A)) +
+  geom_line(aes(group = pair, colour = A)) +
+  geom_hline(yintercept = 0, colour = "black") +
+  theme_bw() +
+  labs(x = "Dichotomization criterion", y = "T-statistic") +
+  facet_wrap(~ B, ncol = 4) +
+  #geom_smooth(colour = "black") +
+  theme(legend.position = "none")
+
+number_of_unique <- table(tapply(t_per_crit$criterion, t_per_crit$index, length), results$`0.4`$B)
+table(apply(number_of_unique, 2, function(x) sum(!x == 0)))
+
+
+
+differences <- tapply(t_per_crit$t, t_per_crit$index, function(x) x[1] - x[length(x)])
+plot(r5$t ~ differences)
+
+hist(differences)
+
+
+#############
+
+
 
 plot(log2(MIC_clean$CFZ), log2(MIC_clean$TZP), cex = seq(0.1, 3, length.out = length(MIC_clean$CFZ)))
 

@@ -70,8 +70,8 @@ plot1 <- ggplot(df_ps, aes(x = cor_t, y = t)) +
   geom_point(colour = "grey60", shape = 16) +
   geom_point(data = df_ps[df_ps$sign_cor, ], shape = 16, colour = "white") +
   geom_point(data = df_ps[df_ps$sign_t, ], colour = "#283c82", shape = 16) +
-  geom_point(data = df_ps[df_ps$sign_cor, ], colour = "#d53397", shape = 1) +
-  #scale_colour_manual(values = c("#283c82", "#d53397")) +
+  geom_point(data = df_ps[df_ps$sign_cor, ], colour = "#F46B2D", shape = 1) +
+  #scale_colour_manual(values = c("#283c82", "#F46B2D")) +
 
 #  geom_smooth(method = "lm", colour = "dark red", linetype = 2) +
   labs(title = "T-statistics from correlation and dependent t-test", x = "t(correlation)", y = "t(t-test)") +

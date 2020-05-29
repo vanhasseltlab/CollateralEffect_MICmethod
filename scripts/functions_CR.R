@@ -63,38 +63,35 @@ PlotAllTvalues <- function(results, dicho_value, FDR_crit = 0.15) {
 
 PlotSignificantEffect <- function(results, dicho_value, FDR_crit = 0.15, species, selectedAB = NULL) {
   dat <- results[[as.character(dicho_value)]]
-
+  dat$effect_size[dat$p_BY > FDR_crit] <- 0
+  dat$t[dat$p_BY > FDR_crit] <- 0
   if (!is.null(selectedAB)) {
-    dat$effect_size[dat$p_BY > FDR_crit] <- 0
+    
     dat <- dat %>% 
       filter(A %in% selectedAB & B %in% selectedAB)
-  } else {
-    dat <- dat[dat$p_BY < FDR_crit, ]
   }
-
-  bl <- colorRampPalette(c("#283c82", "white"))(30) [c(1:10, seq(11, 30, by = 2))] 
-  #colorRampPalette(c("red","#d53397"))(30)
-  re <- colorRampPalette(c("#f54c00", "white"))(30)[c(1:10, seq(11, 30, by = 2))]
+  bl <- colorRampPalette(c("#283c82", "white"))(30) [c(1:10, seq(11, 30, by = 3))] 
+  re <- colorRampPalette(c("#f54c00", "white"))(30)[c(1:10, seq(11, 30, by = 3))]
   
   limits <- c(-1, 1)*max(dat$effect_size)
   
   bb <- limits
   ll <- c("Collateral Sensitivity", "Collateral Resistance") # labels.
   
-  dat$Direction <- ifelse(dat$effect_size > 0, ll[1], ll[2] )
+  dat$Direction <- ifelse(dat$effect_size < 0, ll[1], ll[2] )
   
   plot_ <- ggplot(dat, aes(x = A, y = B, color = effect_size, shape = Direction)) +
-    #geom_point(shape = 15, size = 13) +
-    geom_point(shape = 15, size = 10) +
+    geom_point(shape = 15, size = 13) +
+    #geom_point(shape = 15, size = 10) +
     scale_colour_gradientn(colours = c(re, "white", rev(bl)), limits = limits) +
-    scale_x_discrete(expand = expand_scale(mult = 0, add = rep(0.5, 2))) +
-    scale_y_discrete(expand = expand_scale(mult = 0, add = rep(0.5, 2))) +
+    scale_x_discrete(expand = expansion(mult = 0, add = rep(0.5, 2))) +
+    scale_y_discrete(expand = expansion(mult = 0, add = rep(0.5, 2))) +
     geom_point(size = 4, colour = "white") +
-    scale_shape_manual(values = c("-", "+"), labels = ll) +
+    scale_shape_manual(values = c("-", "+")) +
     coord_fixed() +
     theme(axis.text.x = element_text(angle = 90)) +
     labs(x = "Antibiotic A", y = paste0("Antibiotic B (dichotomized on quantile ", dicho_value, ")"), 
-         size = "Difference in means", colour = "Difference between means", shape = "Type",
+         size = "Difference in means", colour = "Difference between\nmeans", shape = "Type",
          title = paste("Significant collateral responses", species)) +
     geom_vline(xintercept = seq(1.5, length(unique(dat$A)) - 0.5, 1), colour = "grey60") +
     geom_hline(yintercept = seq(1.5, length(unique(dat$B)) - 0.5, 1), colour = "grey60") +
@@ -103,7 +100,6 @@ PlotSignificantEffect <- function(results, dicho_value, FDR_crit = 0.15, species
           legend.title = element_text(size = 12), legend.key = element_rect(fill = "grey60"))
   
   plot_ <- plot_ + geom_abline(slope = 1, intercept = 0, colour = "grey60")
-  plot_
   
   return(plot_)
 }
@@ -141,7 +137,7 @@ PlotCRDistributions <- function(MIC_clean, results, dicho_value, t_rank = 1, one
     geom_bar(stat = "count", width = 0.5, position = "dodge") +
     labs(x = "log2(MIC)", y = "Probability mass", title = comb[1]) +
     scale_x_continuous(breaks = ticks, limits = ran) +
-    scale_y_continuous(expand = expand_scale(mult = c(0, .05)), labels = function(x) sprintf("%.2f", x)) +
+    scale_y_continuous(expand = expansion(mult = c(0, .05)), labels = function(x) sprintf("%.2f", x)) +
     geom_vline(xintercept = mean(dat$A), colour = "#d53397") +
     theme_bw() +
     theme(panel.grid.minor.x = element_blank())
@@ -153,7 +149,7 @@ PlotCRDistributions <- function(MIC_clean, results, dicho_value, t_rank = 1, one
     labs(x = "log2(MIC)", y = "Probability mass", 
          title = paste0(comb[1], "|", comb[2], " > ", d)) +
     scale_x_continuous(breaks = ticks, limits = ran) +
-    scale_y_continuous(expand = expand_scale(mult = c(0, .05)), labels = function(x) sprintf("%.2f", x)) +
+    scale_y_continuous(expand = expansion(mult = c(0, .05)), labels = function(x) sprintf("%.2f", x)) +
     geom_vline(xintercept = mean(dat$A[dat$B >= d & !is.na(dat$B)], na.rm = T), colour = "#d53397") +
     theme_bw() +
     theme(panel.grid.minor.x = element_blank())
@@ -177,7 +173,7 @@ PlotCRDistributions <- function(MIC_clean, results, dicho_value, t_rank = 1, one
     geom_bar(stat = "count", width = 0.5, position = "dodge") +
     labs(x = "log2(MIC)", y = "Probability mass", title = comb[1]) +
     scale_x_continuous(breaks = ticks, limits = ran) +
-    scale_y_continuous(expand = expand_scale(mult = c(0, .05)), labels = function(x) sprintf("%.2f", x)) +
+    scale_y_continuous(expand = expansion(mult = c(0, .05)), labels = function(x) sprintf("%.2f", x)) +
     geom_vline(xintercept = mean(dat$A, na.rm = T), colour = "#d53397") +
     theme_bw() +
     theme(panel.grid.minor.x = element_blank())
@@ -189,7 +185,7 @@ PlotCRDistributions <- function(MIC_clean, results, dicho_value, t_rank = 1, one
     labs(x = "log2(MIC)", y = "Probability mass", 
          title = paste0(comb[1], "|", comb[2], " > ", d)) +
     scale_x_continuous(breaks = ticks, limits = ran) +
-    scale_y_continuous(expand = expand_scale(mult = c(0, .05)), labels = function(x) sprintf("%.2f", x)) +
+    scale_y_continuous(expand = expansion(mult = c(0, .05)), labels = function(x) sprintf("%.2f", x)) +
     geom_vline(xintercept = mean(dat$A[dat$B >= d & !is.na(dat$B)], na.rm = T), colour = "#d53397") +
     theme_bw() +
     theme(panel.grid.minor.x = element_blank())
@@ -266,8 +262,8 @@ PlotStackDistribution <- function(MIC_clean, results, dicho_value, t_rank = 1, o
       ggplot(aes(x = A, y = ..count.., group = Condition, fill = Condition)) +
       geom_bar(stat = "count", width = 0.6, position = "stack") +
       labs(x = expression(log[2]*"(MIC)"), y = "Counts", title = comb[1]) +
-      #scale_y_continuous(expand = expand_scale(mult = c(0, .05)), labels = function(x) sprintf("%.2f", x)) +
-      scale_y_continuous(expand = expand_scale(mult = c(0, .05))) +
+      #scale_y_continuous(expand = expansion(mult = c(0, .05)), labels = function(x) sprintf("%.2f", x)) +
+      scale_y_continuous(expand = expansion(mult = c(0, .05))) +
       scale_x_continuous(breaks = ticks, limits = ran) +
       geom_vline(data = means, aes(xintercept = mean), colour = "white") +
       geom_vline(data = means, aes(xintercept = mean, colour = Means), show.legend  = TRUE, linetype = 2) +
