@@ -6,7 +6,7 @@ source("scripts/functions_CR.R")
 
 ####Import data####
 #Pick species
-species <- "Pseudomonas-aeruginosa"
+species <- "Escherichia-coli"
 
 load(paste0("data/clean/MIC_clean_", species,".Rdata"))
 
@@ -21,11 +21,16 @@ direction <- c("two.sided", "less", "greater")[c("both", "CS", "CR") == CRespons
 
 antibiotics <- colnames(MIC_clean)
 n <- length(antibiotics)
+
 t_test <- as.data.frame(matrix(0, nrow = n*(n - 1), ncol = 8))
 names(t_test) <- c("A", "B", "t", "p", "n", "d", "effect_size", "n_cond")
 t_test$p <- 1
 t_test$mean_Y <- 999
 t_test$mean_X <- 999
+
+###added to test conditional distribution
+t_test$t_cond <- t_test$p_cond <- t_test$effect_size_cond <- 0
+###
 
 for (crit in 1:length(results)) {
   counter <- 0
@@ -43,11 +48,21 @@ for (crit in 1:length(results)) {
       t_test[counter, c("A", "B")] <- antibiotics[c(dep, indep)]
       t_test[counter, "n"] <- nrow(dat)
 
-      
+
       criterium <- quantile(dat[, 2], criteria_quant[crit], na.rm = TRUE)
+      
+      vals <- sort(unique(dat[, 2]))
+      B <- dat[!is.na(dat[, 2]), 2]
+      if (sum(B > criterium) < sum(B < criterium)) {
+        criterium <- mean(c(vals[which(vals == criterium) - 1], criterium))
+      } else if (sum(B > criterium) > sum(B < criterium)) {
+        criterium <- mean(c(vals[which(vals == criterium) + 1], criterium))
+      }
+      
       t_test[counter, "d"] <- criterium
       
       X_w <- dat[dat[, 2] < criterium | is.na(dat[, 2]), 1]
+      X_w_cond <-  dat[dat[, 2] < criterium & !is.na(dat[, 2]), 1]
       Y <- dat[dat[, 2] >= criterium & !is.na(dat[, 2]), 1]
       
       t_test[counter, "mean_Y"] <- mean(2^c(X_w, Y))
@@ -60,14 +75,20 @@ for (crit in 1:length(results)) {
       t_test[counter, 3:4] <- c(t_test_i$statistic, t_test_i$p.value)
       t_test[counter, "effect_size"] <-  mean(Y) - mean(c(X_w, Y))
       
+      t_test_i_cond <- t.test(Y, X_w_cond, var.equal = TRUE, alternative = direction)
+      t_test[counter, "t_cond"] <- t_test_i_cond$statistic
+      t_test[counter, "p_cond"] <- t_test_i_cond$p.value
+      t_test[counter, "effect_size_cond"] <-  mean(Y) - mean(X_w_cond)
 
     }
   }
-  result_crit <- data.frame(t_test, p_BY = p.adjust(t_test$p, method = "BY"))
+  result_crit <- data.frame(t_test, p_BY = p.adjust(t_test$p, method = "BY"), p_BY_cond = p.adjust(t_test$p_cond, method = "BY"))
   
   results[[crit]] <- result_crit
 }
 
+save(results, file = paste0('results/results', species, "_cond.Rdata"))
+write.table(results[["0.5"]], paste0('results/results', species, ".txt"))
 
 #Plot results
 #Overview plot
@@ -117,186 +138,3 @@ pdf(file = paste0("results/figures/distribution_stacked_", species, ".pdf"), hei
   PlotStackDistribution(MIC_clean, results, 0.5, t_rank = 1, one_direction = FALSE, CResponse = "CS")
   PlotStackDistribution(MIC_clean, results, 0.5, t_rank = 1, one_direction = FALSE, CResponse = "CR")
 dev.off()
-
-
-
-
-###experimenting
-
-quantile(log2(MIC_clean$AMK), c(0.4, 0.5, 0.6, 0.8, 0.9), na.rm = T)
-quantile(log2(MIC_clean$TZP), c(0.4, 0.5, 0.6, 0.8, 0.9), na.rm = T)
-
-quantiles <- matrix(99, ncol = 6, nrow = ncol(MIC_clean))
-rownames(quantiles) <- colnames(MIC_clean)
-colnames(quantiles) <- c(0.4, 0.5, 0.6, 0.7, 0.8, 0.9)
-for (i in 1:ncol(MIC_clean)) {
-  quantiles[i, ] <- quantile(log2(MIC_clean[, i]), c(0.4, 0.5, 0.6, 0.7, 0.8, 0.9), na.rm = T)
-}
-
-sapply(apply(quantiles, 1, unique), length)
-
-all_ts <- lapply(results, function(x) x$t)
-all_ts <- as.data.frame(all_ts)
-rownames(all_ts) <- r5$pair
-colnames(all_ts) <- c(0.4, 0.5, 0.6, 0.7, 0.8, 0.9)
-
-
-all_criterions <- as.data.frame(lapply(results, function(x) x$d))
-colnames(all_criterions) <- c(0.4, 0.5, 0.6, 0.7, 0.8, 0.9)
-
-all_criterions$index <- all_ts$index <- 1:nrow(all_ts)
-
-
-t_per_crit_all <- all_ts %>% 
-  mutate(pair = paste(results$`0.4`$A, results$`0.4`$B, sep = "_"),
-         A = results$`0.4`$A,
-         B = results$`0.4`$B) %>% 
-  pivot_longer(-c(index, pair, A, B), names_to = "quantile", values_to = "t") %>% 
-  left_join(all_criterions %>%  
-              pivot_longer(-index, names_to = "quantile", values_to = "criterion"))
-
-t_per_crit <- t_per_crit_all %>% 
-  filter(!duplicated(paste(t, criterion)))
-
-ggplot(t_per_crit, aes(x = pair, y = t, colour = pair)) +
-  geom_boxplot() +
-  #geom_vline(xintercept = 1:380) +
-  #geom_point() +
-  coord_flip() +
-  theme_bw() +
-  theme(legend.position = "none")
-
-within_variance <- tapply(t_per_crit$t, t_per_crit$index, var)
-within_variance[is.na(within_variance)] <- 0
-within_mean <- tapply(t_per_crit$t, t_per_crit$index, mean)
-
-hist(sqrt(within_variance), breaks = 20, yaxs = "i")
-
-plot(sqrt(within_variance), within_mean)
-ind <- abs(t_per_crit$t) > 5
-points(sqrt(within_variance[ind]), within_mean[ind], pch = 16, col = "red")
-
-plot(sqrt(within_variance), r5$t)
-
-sum(within_variance == 0)
-
-
-table(tapply(t_per_crit$criterion, t_per_crit$index, length))
-t_per_crit$quantile <- as.numeric(t_per_crit$quantile)
-ind_more <- t_per_crit$index %in% (1:380)[tapply(t_per_crit$quantile, t_per_crit$index, function(x) length(x) == 2)]
-
-
-
-plot_changes_over_quant <- ggplot(t_per_crit_all, aes(x = as.numeric(quantile), y = t)) +
-  #geom_point(aes(group = pair, colour = A)) +
-  geom_line(aes(group = pair, colour = A)) +
-  geom_hline(yintercept = 0, colour = "black") +
-  theme_bw() +
-  labs(x = "Dichotomization quantile", y = "T-statistic") +
-  facet_wrap(~ B, ncol = 4) +
-  #geom_smooth(colour = "black") +
-  theme(legend.position = "none")
-
-pdf("results/figures/effect_of_dichotomization.pdf", height = 7, width = 5.5)
-print(plot_changes_over_quant)
-dev.off()
-
-plot_changes_over_crit <- ggplot(t_per_crit_all, aes(x = as.numeric(criterion), y = t)) +
-  #geom_point(aes(group = pair, colour = A)) +
-  geom_line(aes(group = pair, colour = A)) +
-  geom_hline(yintercept = 0, colour = "black") +
-  theme_bw() +
-  labs(x = "Dichotomization criterion", y = "T-statistic") +
-  facet_wrap(~ B, ncol = 4) +
-  #geom_smooth(colour = "black") +
-  theme(legend.position = "none")
-
-number_of_unique <- table(tapply(t_per_crit$criterion, t_per_crit$index, length), results$`0.4`$B)
-table(apply(number_of_unique, 2, function(x) sum(!x == 0)))
-
-
-
-differences <- tapply(t_per_crit$t, t_per_crit$index, function(x) x[1] - x[length(x)])
-plot(r5$t ~ differences)
-
-hist(differences)
-
-
-#############
-
-
-
-plot(log2(MIC_clean$CFZ), log2(MIC_clean$TZP), cex = seq(0.1, 3, length.out = length(MIC_clean$CFZ)))
-
-hist(log2(MIC_clean$CFZ))
-hist(log2(MIC_clean$CFZ[log2(MIC_clean$TZP) > 6]), xlim = c(0, 6))
-
-r5 <- results[['0.5']]
-sum(r5$p_BY < 0.05 & r5$t < 0)
-
-
-r5 <- results[['0.5']] %>% 
-  filter(p_BY < 0.05) %>% 
-  arrange(t)
-sum(r5$t<0)
-sum(r5$t>0)
-nrow(MIC_clean)
-
-#Calculate foldchange
-r5$fold_change <- r5$mean_X/r5$mean_Y
-r5$log2_fold_change <- log2(r5$fold_change)
-
-
-#Plot number of observations per antibiotic
-library(R.utils)
-meta_antibio_abbr <- read.csv("data/clean/meta_antibio_abbr.csv", header = T, stringsAsFactors = F)
-table_anti <- data.frame(Frequency = colSums(!is.na(MIC_clean)), abbreviation = names(MIC_clean))
-table_anti <- table_anti %>% 
-  left_join(meta_antibio_abbr) %>% 
-  mutate(Antibiotic = capitalize(antibiotic))
-
-p <- ggplot(data = table_anti, aes(x = Antibiotic, y = Frequency)) +
-  #geom_hline(yintercept =, colour = "light pink") +
-  geom_bar(stat = "identity") +
-  theme_bw()
-p + coord_flip()+ scale_y_continuous(expand = c(0, 0), limits = c(0, nrow(MIC_clean)))
-
-table_anti
-
-best_df <- r5[c(1:5,nrow(r5):(nrow(r5) - 4)), ]
-
-best_df[, c(4, 8)] <- apply(best_df[, c(4, 8)], 2, function(x) formatC(x, format = "e", digits = 2))
-
-best_df[, c(7, 3)] <- apply(best_df[, c(7, 3)], 2, function(x) round(x, digits = 2))
-
-##for in the article
-
-table_anti
-selectedAB<- unique(unlist(best_df[c(1:3, 6:8), 1:2]))
-
-pdf(file = paste0("results/figures/significant_selected_", species, ".pdf"), height = 5, width = 7)
-  print(PlotSignificantEffect(results, 0.5, FDR_crit = 0.05, species = species, selectedAB = selectedAB))
-dev.off()
-
-pdf(file = paste0("results/figures/t_allcomparisons_median_", species, ".pdf"), height = 7, width = 9)
-  print(PlotSignificantEffect(results, 0.5, FDR_crit = 0.05, species = species))
-dev.off()
-
-pdf(file = paste0("results/figures/significant_distributions", species, ".pdf"), height = 7, width = 9)
-  PlotCRDistributions(MIC_clean, results, 0.5, t_rank = 1, one_direction = FALSE, CResponse = "CS")
-  PlotCRDistributions(MIC_clean, results, 0.5, t_rank = 1, one_direction = FALSE, CResponse = "CR")
-dev.off()
-
-print(PlotSignificantEffect(results, 0.5, FDR_crit = 0.05, species = species, selectedAB = selectedAB))
-
-pdf(file = paste0("results/figures/largest_distributions", species, ".pdf"), height = 5, width = 9)
-  PlotStackDistribution(MIC_clean, results, 0.5, one_direction = FALSE, CResponse = "CS", whichAB = c("CFZ", "FOX"))
-  PlotStackDistribution(MIC_clean, results, 0.5, one_direction = FALSE, CResponse = "CR", whichAB = c("LVX", "CIP"))
-dev.off()
-
-pdf(file = paste0("results/figures/largest_distributions2", species, ".pdf"), height = 5, width = 9)
-PlotStackDistribution(MIC_clean, results, 0.5, one_direction = FALSE, CResponse = "CR", whichAB = c("CAZ", "FEP"))
-dev.off()
-
-
-
