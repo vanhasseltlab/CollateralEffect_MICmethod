@@ -7,9 +7,12 @@ library(gridExtra)
 library(grid)
 
 ##our test statistic (based on t.test())
-CRTTest <- function(A, B, quant = 0.5) {
+CRTTest <- function(A, B, criterium = 0.5, CResponse = "both", crit_type = "quant") {
+  direction <- c("two.sided", "less", "greater")[c("both", "CS", "CR") == CResponse]
   
-  criterium <- quantile(B, quant, na.rm = TRUE)
+  if (crit_type == "quant") {
+    criterium <- quantile(B, criterium, na.rm = TRUE)
+  }
   
   Z <- A[B < criterium | is.na(B)]
   Y <- A[B >= criterium & !is.na(B)]
@@ -20,7 +23,7 @@ CRTTest <- function(A, B, quant = 0.5) {
   dep_t_test <- t.test(Y, Z, var.equal = TRUE, alternative = direction)
   
   #adjust estimates
-  dep_t_test$estimate <- c(mean(Y), mean(A))
+  dep_t_test$estimate <- c(mean(Y, na.rm = T), mean(A, na.rm = T))
   names(dep_t_test$estimate) <- c("mean of A|B = R", "mean of A")
   
   #adjust standard error
@@ -31,6 +34,9 @@ CRTTest <- function(A, B, quant = 0.5) {
   #adjust method
   dep_t_test$method <- "Overlapping Sample t-test"
   dep_t_test$data.name <- "A|B = R and A"
+  
+  #add data to output
+  dep_t_test$data <- list(`A|B = R` = Y, A = c(Z, Y), `A|B != R` = Z)
   
   return(dep_t_test)
 }
@@ -61,6 +67,7 @@ PlotAllTvalues <- function(results, dicho_value, FDR_crit = 0.15) {
   return(plot_)
 }
 
+#plotting the results
 PlotSignificantEffect <- function(results, dicho_value, FDR_crit = 0.15, species, selectedAB = NULL) {
   dat <- results[[as.character(dicho_value)]]
   dat$effect_size[dat$p_BY > FDR_crit] <- 0
@@ -81,13 +88,13 @@ PlotSignificantEffect <- function(results, dicho_value, FDR_crit = 0.15, species
   dat$Direction <- ifelse(dat$effect_size < 0, ll[1], ll[2] )
   
   plot_ <- ggplot(dat, aes(x = A, y = B, color = effect_size, shape = Direction)) +
-    geom_point(shape = 15, size = 13) +
+    geom_point(shape = 15, size = 11) +
     #geom_point(shape = 15, size = 10) +
     scale_colour_gradientn(colours = c(re, "white", rev(bl)), limits = limits) +
     scale_x_discrete(expand = expansion(mult = 0, add = rep(0.5, 2))) +
     scale_y_discrete(expand = expansion(mult = 0, add = rep(0.5, 2))) +
     geom_point(size = 4, colour = "white") +
-    scale_shape_manual(values = c("-", "+")) +
+    scale_shape_manual(values = c("+", "-")) +
     coord_fixed() +
     theme(axis.text.x = element_text(angle = 90)) +
     labs(x = "Antibiotic A", y = paste0("Antibiotic B (dichotomized on quantile ", dicho_value, ")"), 
@@ -103,7 +110,6 @@ PlotSignificantEffect <- function(results, dicho_value, FDR_crit = 0.15, species
   
   return(plot_)
 }
-
 
 PlotCRDistributions <- function(MIC_clean, results, dicho_value, t_rank = 1, one_direction = TRUE, CResponse = "CS", FDR_crit = 0.15) {
   sign_dat <- results[[as.character(dicho_value)]] %>% 
@@ -201,8 +207,8 @@ PlotCRDistributions <- function(MIC_clean, results, dicho_value, t_rank = 1, one
   
 }
 
-
-PlotStackDistribution <- function(MIC_clean, results, dicho_value, t_rank = 1, one_direction = TRUE, CResponse = "CS", FDR_crit = 0.15, whichAB = NULL) {
+PlotStackDistribution <- function(MIC_clean, results, dicho_value, t_rank = 1, one_direction = TRUE, CResponse = "CS", FDR_crit = 0.15, whichAB = NULL,
+                                  colours = c("#283c82", "#F46B2D")) {
 
   if(!is.null(whichAB)) {
     comb <- whichAB
@@ -244,7 +250,7 @@ PlotStackDistribution <- function(MIC_clean, results, dicho_value, t_rank = 1, o
   
   #for all combinations?
   dat <- log2(MIC_clean[, comb])
-  dat <- dat[!is.na(dat[, 1]), ]
+  dat <- dat[!is.na(dat[, 1]) & !is.na(dat[, 2]), ]
   names(dat) <- c("A", "B")
   d_min <- max(dat$B[dat$B < d], na.rm = T)
   
@@ -267,13 +273,13 @@ PlotStackDistribution <- function(MIC_clean, results, dicho_value, t_rank = 1, o
       scale_x_continuous(breaks = ticks, limits = ran) +
       geom_vline(data = means, aes(xintercept = mean), colour = "white") +
       geom_vline(data = means, aes(xintercept = mean, colour = Means), show.legend  = TRUE, linetype = 2) +
-      scale_fill_manual(values = c("#283c82", "#F46B2D")) +
+      scale_fill_manual(values = colours) +
       scale_colour_manual(labels = c(bquote(hat(mu)[.(as.character(means$Means[1]))]),
       #                               bquote(paste(hat(mu)[paste(comb[1], "|", comb[2],>=, d)]))),
                                      bquote(hat(mu)[.(as.character(means$Means[2]))])), 
-                          values = c("#283c82", "#F46B2D")) +
+                          values = colours) +
       theme_bw() +
-      theme(panel.grid.minor.x = element_blank(), legend.position = "bottom",
+      theme(panel.grid.minor.x = element_blank(), panel.grid.major.x = element_blank(), legend.position = "bottom",
        #     legend.background = element_rect(fill = "transparent", size = 0.5, linetype = "solid", colour = "black"),
             legend.box = "horizontal", legend.direction = "vertical") + 
       guides(fill = guide_legend(override.aes = list(linetype = 0), order = 1, title = NULL), 
@@ -295,7 +301,7 @@ PlotStackDistribution <- function(MIC_clean, results, dicho_value, t_rank = 1, o
   comb <- comb[2:1]
   d <- new_dat[paste(comb, collapse = "_"), "d"]
   dat <- log2(MIC_clean[, comb])
-  dat <- dat[!is.na(dat[, 1]), ]
+  dat <- dat[!is.na(dat[, 1]) & !is.na(dat[, 2]), ]
   names(dat) <- c("A", "B")
   d_min <- max(dat$B[dat$B < d], na.rm = T)
   
