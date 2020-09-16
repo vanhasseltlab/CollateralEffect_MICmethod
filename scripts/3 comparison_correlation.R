@@ -1,27 +1,65 @@
 #Exploration of findings: Would correlation be enough?
+library(tidyverse)
+#results T-test
+load("results/test_resultsPseudomonas-aeruginosa.Rdata")
+#Clean MIC data
+load("data/clean/MIC_clean_Pseudomonas-aeruginosa.Rdata")
+load("data/clean/MIC_clean_Escherichia-coli.Rdata")
+
+
 r5 <- results$`0.5`
 r5$pair <- paste0(r5$A, r5$B)
 
-combination <- c("LVX", "CIP")
+combination <- c("CST", "TZP")
 cs_dat <- MIC_clean[, combination]
+names(cs_dat) <- c("A", "B")
 
 result <- r5[r5$pair == paste0(combination, collapse = ""), ]
 
-cs_dat <- cs_dat[!is.na(cs_dat$LVX) & !is.na(cs_dat$CIP), ]
+cs_dat <- cs_dat[!is.na(cs_dat$A) & !is.na(cs_dat$B), ]
+d_min <- max(cs_dat$B[cs_dat$B < result$d], na.rm = T)
+
 n <- nrow(cs_dat)
 
 cs_dat$p_sizes <- sample(seq(0.1, 3, length.out = n))
+cs_dat$AgivenBr <-  as.factor(ifelse(log2(cs_dat$B) >= result$d & !is.na(cs_dat$B), 
+                                     paste0(combination[1],"|", combination[2]," > ", d_min), 
+                                     paste0(combination[1])))
+
+
 
 #plot MIC vs MIC with every circles representing one data point.
-ggplot(cs_dat, aes(x = log2(LVX), y = log2(CIP))) +
+ggplot(cs_dat, aes(x = log2(A), y = log2(B))) +
+  labs(x = paste0("log2(", combination[1], ")"), y = paste0("log2(", combination[2], ")")) +
   geom_point(shape = 1, aes(size = p_sizes), show.legend = F) +
   scale_size_continuous(range = c(0.1, 20)) +
-  geom_smooth(method = lm, se = F) +
+#  geom_smooth(method = lm, se = F) +
+  geom_hline(yintercept = result$d - 0.5) +
+  theme_bw()
+
+ggplot(cs_dat, aes(x = log2(A), y = log2(B))) +
+  labs(x = paste0("log2(", combination[1], ")"), y = paste0("log2(", combination[2], ")")) +
+  geom_point(shape = 1, aes(size = p_sizes), show.legend = F) +
+  scale_size_continuous(range = c(0.1, 20)) +
+  #  geom_smooth(method = lm, se = F) +
   geom_hline(yintercept = result$d - 0.5) +
   theme_bw()
 
 
-ggplot(cs_dat, aes(x = log2(CIP), y = log2(LVX))) +
+ggplot(cs_dat, aes(x = log2(A), fill = AgivenBr, group = AgivenBr)) +
+  geom_bar(width = 0.6, position = "stack") + 
+  scale_fill_manual(values = c("#283c82", "#F46B2D")) +
+  labs(x = expression(log[2]*"(MIC)"), y = "Counts", title = combination[1]) +
+  theme_bw()
+
+ggplot(cs_dat, aes(x = log2(A), fill = AgivenBr, group = AgivenBr)) +
+  geom_bar(width = 0.6, position = "stack") + 
+  scale_fill_manual(values = c("#283c82", "#F46B2D")) +
+  labs(x = expression(log[2]*"(MIC)"), y = "Counts", title = combination[1]) +
+  theme_bw()
+
+ggplot(cs_dat, aes(x = log2(B), y = log2(A))) +
+  labs(x = paste0("log2(", combination[2], ")"), y = paste0("log2(", combination[1], ")")) +
   geom_point(shape = 2, aes(size = p_sizes), show.legend = F) +
   geom_smooth(method = lm, se = F) +
   theme_bw()
@@ -29,11 +67,11 @@ ggplot(cs_dat, aes(x = log2(CIP), y = log2(LVX))) +
 
 
 
-cor(log2(cs_dat[, combination]), method = "kendall") #ranked correlation (log2 does not matter)
-cor(log2(cs_dat[, combination]), method = "pearson") #standard correlation (log2 does matter)
+cor(log2(cs_dat[, 1:2]), method = "kendall") #ranked correlation (log2 does not matter)
+cor(log2(cs_dat[, 1:2]), method = "pearson") #standard correlation (log2 does matter)
 
 ############test correlations#########
-
+source("scripts/functions_CR.R")
 MIC_t <- log2(MIC_clean)
 
 df_ps <- as.data.frame(expand.grid(names(MIC_t), names(MIC_t), stringsAsFactors = F))
@@ -61,6 +99,9 @@ sum(df_ps$sign_t & df_ps$t < 0)
 sum(df_ps$sign_cor & df_ps$cor < 0)
 sum(df_ps$sign_t & df_ps$t > 0)
 sum(df_ps$sign_cor & df_ps$cor > 0)
+
+View(df_ps[df_ps$sign_cor != df_ps$sign_t, ])
+
 
 
 pdf(file = "results/figures/corr/t_values_cor_vs_depttest.pdf", height = 5, width = 5)
@@ -356,7 +397,56 @@ no_col <- sample(states, 100, replace = T)
 
 
 
+#Compare with correlations
+load("results/test_resultsPseudomonas-aeruginosa.Rdata")
 
+t_results <- results$`0.5`
+
+#calculate correlations
+load("data/clean/MIC_clean_Pseudomonas-aeruginosa.Rdata")
+cor_matrix <- Hmisc::rcorr(log2(as.matrix(MIC_clean)))
+
+
+t_results$cor <- t_results$p_cor <- 0
+for (i in 1:nrow(t_results)) {
+  t_results$cor[i] <- cor_matrix$r[t_results$A[i], t_results$B[i]]
+  t_results$p_cor[i] <- cor_matrix$P[t_results$A[i], t_results$B[i]]
+}
+
+
+plot1 <- ggplot(t_results, aes(x = cor, y = t)) +
+  geom_hline(yintercept = qnorm(c(0.975, 0.5, 0.025)), linetype = c(2,1,2), colour = "grey60") +
+  geom_vline(xintercept = qnorm(c(0.975, 0.5, 0.025)), linetype = c(2,1,2), colour = "grey60") +
+  geom_point(colour = "grey60", shape = 16) +
+  # geom_point(data = df_ps[df_ps$sign_cor, ], shape = 16, colour = "white") +
+  # geom_point(data = df_ps[df_ps$sign_t, ], colour = "#283c82", shape = 16) +
+  # geom_point(data = df_ps[df_ps$sign_cor, ], colour = "#F46B2D", shape = 1) +
+  #scale_colour_manual(values = c("#283c82", "#F46B2D")) +
+  
+  #  geom_smooth(method = "lm", colour = "dark red", linetype = 2) +
+  labs(title = "T-statistics from correlation and dependent t-test", x = "t(correlation)", y = "t(t-test)") +
+  theme_bw()
+ggplot(t_results, aes(x = cor, y = t)) +
+  geom_point()
+
+plot_ <- ggplot(dat, aes(x = A, y = B, size = abs(t), color = as.factor(sign(t))))+ 
+  geom_point(shape = 15) +
+  scale_size(range = c(3, 10)) +
+  scale_color_manual(values = c("#F46B2D", "#283c82"), labels = c("Collateral Sensitivity", "Collateral Resitance")) +
+  coord_fixed() +
+  theme(axis.text.x = element_text(angle = 90)) +
+  labs(x = "Anitbiotic A", y = "Antibiotic B", size = "T-value", colour = "Direction",
+       title = paste("Dichotomised on quantile", dicho_value)) +
+  geom_vline(xintercept = seq(1.5, length(unique(dat$A)) - 0.5, 1), colour = "grey60") +
+  geom_hline(yintercept = seq(1.5, length(unique(dat$B)) - 0.5, 1), colour = "grey60") +
+  theme_bw() +
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+        legend.title = element_text(size = 12)) +
+  guides(color = guide_legend(override.aes = list(size = 4)), 
+         size =  guide_legend(title.theme = element_text(size = 16)))
+
+plot_ <- plot_ + geom_point(data = dat[dat$p_BY < FDR_crit, ], pch = "*", aes(x = A, y = B), colour = "white",
+                            size = 7)
 
 
 

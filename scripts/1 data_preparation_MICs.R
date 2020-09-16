@@ -2,15 +2,16 @@
 
 #Libraries
 library(tidyverse)
+source("scripts/functions_CR.R")
 
 ####Import data####
 #Load abbreviations file
 meta_antibio_abbr <- read.csv("data/clean/meta_antibio_abbr.csv", header = T, stringsAsFactors = F)
 
 #Pick species
-species <- "Pseudomonas-aeruginosa"
-#Choose minimal number of measurements per drug
-na_remove <- 100 #minimal number of MIC measurements for testing
+species <- "Escherichia-coli"
+#Choose minimal number of MIC measurements to include drug
+na_remove <- 200
 
 #Load the raw data (long format) 
 raw_MIC <- read.table(paste0("data/raw/", species ,".txt"), header = T, sep = "\t", dec = ",", stringsAsFactors = F)
@@ -48,37 +49,6 @@ if (any(missing_abb)) {
 
 
 #Check if there are multiple measurements of a strain/antibiotic combination
-RemoveDuplicateMICs <- function(MIC_df) {
-  # two unique measurements for the same key wil be summarized: max if ">" and mean if "<=" 
-  if (length(unique(MIC_df$key)) == nrow(MIC_df)) {
-    return(MIC_df)
-  }
-  find_unique <- ave(MIC_df$key, MIC_df$key, FUN = length) == 1
-  new_MIC <- MIC_df[find_unique, ]
-  for (i in unique(MIC_df$key[!find_unique])) {
-    dat <- MIC_df[MIC_df$key == i, ]
-    if (nrow(dat) == 1) {
-      new_MIC <- rbind(new_MIC, dat)
-    }
-    if (nrow(dat) > 1) {
-      if (dat$measurement_sign[1] == dat$measurement_sign[2]) {
-        if(dat$measurement_sign[1] == "<=") {
-          MIC_i <- mean(dat$MIC)
-        }
-        if(dat$measurement_sign[1] == ">") {
-          MIC_i <- max(dat$MIC)
-        }
-      } else {
-        MIC_i <- mean(dat$MIC[dat$measurement_sign == "<="])
-        dat$measurement_sign <- "<="
-      }
-      dat <- dat[1, ]
-      dat$MIC <- MIC_i
-      new_MIC <- rbind(new_MIC, dat)
-    }
-  }
-  return(new_MIC)
-}
 MIC_df <- RemoveDuplicateMICs(MIC_df)
 
 #Create wide format of MIC values
@@ -90,7 +60,8 @@ MIC_table <- MIC_df %>%
 #Remove antibiotics with to many na's
 n_antibiotic <- apply(MIC_table, 2, function(x) sum(!is.na(x)))
 MIC_clean <- MIC_table %>% 
-  select(which(n_antibiotic > na_remove))
+  select(which(n_antibiotic > na_remove)) %>% 
+  filter_all(any_vars(!is.na(.)))
 
 #Save cleaned data for further use
 save(MIC_clean, file = paste0("data/clean/MIC_clean_", species,".Rdata"))
@@ -104,4 +75,3 @@ p <- ggplot(data = tab_mic_AB, aes(x = Var1, y = Freq)) +
   geom_bar(stat = "identity") +
   theme_bw()
 p + coord_flip()+ scale_y_continuous(expand = c(0, 0), limits = c(0, length(unique(raw_MIC$genome_id))))
-

@@ -22,15 +22,8 @@ direction <- c("two.sided", "less", "greater")[c("both", "CS", "CR") == CRespons
 antibiotics <- colnames(MIC_clean)
 n <- length(antibiotics)
 
-t_test <- as.data.frame(matrix(0, nrow = n*(n - 1), ncol = 8))
-names(t_test) <- c("A", "B", "t", "p", "n", "d", "effect_size", "n_cond")
-t_test$p <- 1
-t_test$mean_Y <- 999
-t_test$mean_X <- 999
-
-###added to test conditional distribution
-t_test$t_cond <- t_test$p_cond <- t_test$effect_size_cond <- 0
-###
+t_test <- as.data.frame(matrix(0, nrow = n*(n - 1), ncol = 10))
+names(t_test) <- c("A", "B", "t", "p", "n", "n_resi", "d", "effect_size", "mean_sens", "mean_resi")
 
 for (crit in 1:length(results)) {
   counter <- 0
@@ -43,7 +36,7 @@ for (crit in 1:length(results)) {
       counter <- counter + 1
       
       dat <- log2(MIC_clean[, c(dep, indep)])
-      dat <- dat[!is.na(dat[, 1]), ]
+      dat <- dat[!is.na(dat[, 1]) &!is.na(dat[, 2]), ]
      
       t_test[counter, c("A", "B")] <- antibiotics[c(dep, indep)]
       t_test[counter, "n"] <- nrow(dat)
@@ -51,44 +44,42 @@ for (crit in 1:length(results)) {
 
       criterium <- quantile(dat[, 2], criteria_quant[crit], na.rm = TRUE)
       
-      vals <- sort(unique(dat[, 2]))
-      B <- dat[!is.na(dat[, 2]), 2]
-      if (sum(B > criterium) < sum(B < criterium)) {
-        criterium <- mean(c(vals[which(vals == criterium) - 1], criterium))
-      } else if (sum(B > criterium) > sum(B < criterium)) {
-        criterium <- mean(c(vals[which(vals == criterium) + 1], criterium))
+      if (criteria_quant[crit] == 0.5) {
+        vals <- sort(unique(dat[, 2]))
+        B <- dat[!is.na(dat[, 2]), 2]
+        if (sum(B > criterium) < sum(B < criterium)) {
+          criterium <- mean(c(vals[which(vals == criterium) - 1], criterium))
+        } else if (sum(B > criterium) > sum(B < criterium)) {
+          criterium <- mean(c(vals[which(vals == criterium) + 1], criterium))
+        }
       }
-      
       t_test[counter, "d"] <- criterium
       
-      X_w <- dat[dat[, 2] < criterium | is.na(dat[, 2]), 1]
-      X_w_cond <-  dat[dat[, 2] < criterium & !is.na(dat[, 2]), 1]
-      Y <- dat[dat[, 2] >= criterium & !is.na(dat[, 2]), 1]
+      W <- dat[dat[, 2] < criterium, 1] #sensitive
+      Y <- dat[dat[, 2] >= criterium, 1] #resistant
       
-      t_test[counter, "mean_Y"] <- mean(2^c(X_w, Y))
-      t_test[counter, "mean_X"] <- mean(2^Y)
-      t_test[counter, "n_cond"] <- length(Y)
+      t_test[counter, "mean_sens"] <- 2^mean(W)
+      t_test[counter, "mean_resi"] <- 2^mean(Y)
+      t_test[counter, "n_resi"] <- length(Y)
      
-      if (any(length(X_w) < 2, length(Y) < 2)) next()
+      if (any(length(W) < 2, length(Y) < 2)) {
+        next(paste("quantile", criteria_quant[crit], "Antibiotic A", antibiotics[dep], "and B", antibiotics[indep], 
+                   "don't have enough observations (res, sens):", length(Y), length(W)))
+      }
       
-      t_test_i <- t.test(Y, X_w, var.equal = TRUE, alternative = direction)
+      t_test_i <- t.test(Y, W, var.equal = TRUE, alternative = direction)
       t_test[counter, 3:4] <- c(t_test_i$statistic, t_test_i$p.value)
-      t_test[counter, "effect_size"] <-  mean(Y) - mean(c(X_w, Y))
-      
-      t_test_i_cond <- t.test(Y, X_w_cond, var.equal = TRUE, alternative = direction)
-      t_test[counter, "t_cond"] <- t_test_i_cond$statistic
-      t_test[counter, "p_cond"] <- t_test_i_cond$p.value
-      t_test[counter, "effect_size_cond"] <-  mean(Y) - mean(X_w_cond)
+      t_test[counter, "effect_size"] <-  mean(Y) - mean(W)
 
     }
   }
-  result_crit <- data.frame(t_test, p_BY = p.adjust(t_test$p, method = "BY"), p_BY_cond = p.adjust(t_test$p_cond, method = "BY"))
+  result_crit <- data.frame(t_test, p_BY = p.adjust(t_test$p, method = "BY"))
   
   results[[crit]] <- result_crit
 }
 
-save(results, file = paste0('results/results', species, "_cond.Rdata"))
-write.table(results[["0.5"]], paste0('results/results', species, ".txt"))
+save(results, file = paste0('results/results_', species, ".Rdata"))
+write.table(results[["0.5"]], paste0('results/results_', species, ".txt"))
 
 #Plot results
 #Overview plot
