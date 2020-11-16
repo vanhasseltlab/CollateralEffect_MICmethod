@@ -10,76 +10,47 @@ species <- "Escherichia-coli"
 
 load(paste0("data/clean/MIC_clean_", species,".Rdata"))
 
-####Test data####
+####collateral effect T-test####
 #Pick direction
 CResponse <- "both" #possibilities: "CR", "CS", or "both"
-
-criteria_quant <- c(0.4, 0.5, 0.6, 0.7, 0.8, 0.9)
-results <- vector(mode = "list", length = length(criteria_quant))
-names(results) <- criteria_quant
-direction <- c("two.sided", "less", "greater")[c("both", "CS", "CR") == CResponse]
+#Pick dichotomisation criterium
+dich_crit <- "median" #can be an quantile value or "median" where the data is split in (close to) equal halfs 
 
 antibiotics <- colnames(MIC_clean)
-n <- length(antibiotics)
+m <- length(antibiotics)
 
-t_test <- as.data.frame(matrix(0, nrow = n*(n - 1), ncol = 10))
-names(t_test) <- c("A", "B", "t", "p", "n", "n_resi", "d", "effect_size", "mean_sens", "mean_resi")
+t_test_results <- as.data.frame(matrix(NA, nrow = m*(m - 1), ncol = 9))
+names(t_test_results) <- c("A", "B", "n", "n_resi", "tau", "mean_resi", "mean_sens", "t", "p")
 
-for (crit in 1:length(results)) {
-  counter <- 0
-  
-  for (dep in 1:n) {
-    for (indep in 1:n) {
-      if (dep == indep) {
-        next
-      }
-      counter <- counter + 1
-      
-      dat <- log2(MIC_clean[, c(dep, indep)])
-      dat <- dat[!is.na(dat[, 1]) &!is.na(dat[, 2]), ]
-     
-      t_test[counter, c("A", "B")] <- antibiotics[c(dep, indep)]
-      t_test[counter, "n"] <- nrow(dat)
-
-
-      criterium <- quantile(dat[, 2], criteria_quant[crit], na.rm = TRUE)
-      
-      if (criteria_quant[crit] == 0.5) {
-        vals <- sort(unique(dat[, 2]))
-        B <- dat[!is.na(dat[, 2]), 2]
-        if (sum(B > criterium) < sum(B < criterium)) {
-          criterium <- mean(c(vals[which(vals == criterium) - 1], criterium))
-        } else if (sum(B > criterium) > sum(B < criterium)) {
-          criterium <- mean(c(vals[which(vals == criterium) + 1], criterium))
-        }
-      }
-      t_test[counter, "d"] <- criterium
-      
-      W <- dat[dat[, 2] < criterium, 1] #sensitive
-      Y <- dat[dat[, 2] >= criterium, 1] #resistant
-      
-      t_test[counter, "mean_sens"] <- 2^mean(W)
-      t_test[counter, "mean_resi"] <- 2^mean(Y)
-      t_test[counter, "n_resi"] <- length(Y)
-     
-      if (any(length(W) < 2, length(Y) < 2)) {
-        next(paste("quantile", criteria_quant[crit], "Antibiotic A", antibiotics[dep], "and B", antibiotics[indep], 
-                   "don't have enough observations (res, sens):", length(Y), length(W)))
-      }
-      
-      t_test_i <- t.test(Y, W, var.equal = TRUE, alternative = direction)
-      t_test[counter, 3:4] <- c(t_test_i$statistic, t_test_i$p.value)
-      t_test[counter, "effect_size"] <-  mean(Y) - mean(W)
-
+counter <- 0
+for (dep in 1:m) {
+  for (indep in 1:m) {
+    if (dep == indep) {
+      next
     }
-  }
-  result_crit <- data.frame(t_test, p_BY = p.adjust(t_test$p, method = "BY"))
-  
-  results[[crit]] <- result_crit
+    counter <- counter + 1
+    antibiotics <- names(MIC_clean)[c(dep, indep)]
+    t_test <- CETTest(A = MIC_clean[, dep], B = MIC_clean[, indep], crit_type = "median", CE_type = "both")
+    t_test_results[counter, ] <- data.frame(A = antibiotics[1], B = antibiotics[2], 
+                                    n = sum(lengths(t_test$data)), n_resi = length(t_test$data$`A|B = r`),
+                                    tau = t_test$tau, mean_resi = t_test$estimate[1], 
+                                    mean_sens = t_test$estimate[2], t = t_test$statistic,
+                                    p = t_test$p.value, stringsAsFactors = F)
+    }
 }
+t_test_results <- t_test_results %>% 
+  mutate(effect_size = mean_resi - mean_sens, 
+         p_BY = p.adjust(p, method = "BY"),
+         effect_type = ifelse(t > 0, "CR", "CS"))
 
-save(results, file = paste0('results/results_', species, ".Rdata"))
-write.table(results[["0.5"]], paste0('results/results_', species, ".txt"))
+save(t_test_results, file = paste0('results/results_', species, ".Rdata"))
+
+PlotSignificantEffect(t_test_results, FDR_crit = 0.05, species = species)
+PlotCondDistribution(MIC_clean, t_test_results, t_rank = 1, one_direction = FALSE, CResponse = "CS", FDR_crit = 0.05, whichAB = NULL,
+                     colours = c("#BFC6B8", "#4A5242"))
+PlotCondDistribution(MIC_clean, t_test_results, t_rank = 1, one_direction = FALSE, CResponse = "CR", FDR_crit = 0.05, whichAB = NULL,
+                     colours = c("#BFC6B8", "#4A5242"))
+
 
 #Plot results
 #Overview plot
