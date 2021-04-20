@@ -1,0 +1,469 @@
+antibiotic,abbreviation
+4-aminosalicylic acid,AMA
+para-aminosalicylic acid,AMA
+5-fluorocytosine,FCT
+acetylmidecamycin,ACM
+acetylspiramycin,ASP
+aldesulfone sodium,ALS
+amikacin,AMK
+amikacin/fosfomycin,AKF
+amoxicillin,AMX
+amoxicillin/clavulanic acid,AMC
+amoxicillin/sulbactam,AXS
+amphotericin b,AMB
+amphotericin b-high,AMH
+ampicillin,AMP
+ampicillin/sulbactam,SAM
+amprolium,AMR
+anidulafungin,ANI
+apalcillin,APL
+apramycin,APR
+arbekacin,ARB
+aspoxicillin,APX
+astromicin,AST
+avibactam,AVI
+avilamycin,AVI
+avoparcin,AVO
+azidocillin,AZD
+azithromycin,AZM
+azlocillin,AZL
+aztreonam,ATM
+aztreonam/avibactam,AZA
+bacampicillin,BAM
+bacitracin zinc,BAC
+bedaquiline,BDQ
+bekanamycin,BEK
+benzathine benzylpenicillin,BNB
+benzathine phenoxymethylpenicillin,BNP
+benzylpenicillin,BPE
+besifloxacin,BES
+bezlotoxumab,BEZ
+biapenem,BIA
+bicyclomycin (bicozamycin),BCZ
+brodimoprim,BDP
+butoconazole,BUT
+cadazolid,CDZ
+calcium aminosalicylate,CLA
+capreomycin,CAP
+carbenicillin,CAR
+carindacillin,CRN
+carumonam,CAR
+caspofungin,CAS
+cefacetrile,CAC
+cefaclor,CEC
+cefadroxil,CFR
+cefaloridine,RID
+cefamandole,FAM
+cefatrizine,CTZ
+cefazedone,CZD
+cefazolin,CFZ
+cefbuperazone,CFB
+cefcapene,CCP
+cefcapene pivoxil,CCX
+cefdinir,CDR
+cefditoren,CDN
+cefditoren pivoxil,DIX
+cefepime,FEP
+cefepime/clavulanic acid,CPC
+cefepime/tazobactam,FPT
+cefepime/zidebactam,FPZ
+cefetamet,FET
+cefetamet pivoxil,CPI
+cefetecol (cefcatacol),CCL
+cefetrizole,CZL
+cefiderocol,FDC
+cefixime,CFM
+cefmenoxime,CMX
+cefmetazole,CMZ
+cefminox,CNX
+cefodizime,DIZ
+cefonicid,CID
+cefoperazone,CFP
+cefoperazone/sulbactam,CSL
+ceforanide,CND
+cefoselis,CSE
+cefotaxime,CTX
+cefotaxime/clavulanic acid,CTX-CLA
+cefotaxime/sulbactam,CTS
+cefotetan,CTT
+cefotiam,CTF
+cefotiam hexetil,CHE
+cefovecin,FOV
+cefoxitin,FOX
+cefoxitin screening,FOX1
+cefozopran,ZOP
+cefpimizole,CPZ
+cefpiramide,CPM
+cefpirome,CPO
+cefpodoxime,CPD
+cefpodoxime proxetil,CPX
+cefpodoxime/clavulanic acid,CDC
+cefprozil,CPR
+cefquinome,CEQ
+cefroxadine,CRD
+cefsulodin,CFS
+cefsumide,CSU
+ceftaroline,CPT
+ceftaroline/avibactam,CPA
+ceftazidime,CAZ
+ceftazidime/avibactam,CZA
+ceftazidime/clavulanic acid,CAZ-CLA
+cefteram,CEM
+cefteram pivoxil,CPL
+ceftezole,CTL
+ceftibuten,CTB
+ceftiofur,CTF
+ceftizoxime,ZOX
+ceftizoxime alapivoxil,CZP
+ceftobiprole,BPR
+ceftobiprole medocaril,CFM1
+ceftolozane/enzyme inhibitor,CEI
+ceftolozane/tazobactam,C-T
+ceftriaxone,CRO
+ceftriazone,CRO
+cefuroxime,CXM
+cefuroxime axetil,CXA
+cefuroxime/metronidazole,CFM2
+cefuroxime/sodium,CXM-S
+cefuzonam,ZON
+cephalexin,LEX
+cephalothin,CEF
+cephapirin,HAP
+cephradine,RAD
+cetocycline,CTO
+chloramphenicol,CHL
+chlortetracycline,CTE
+ciclacillin,CIC
+ciclopirox,CIX
+cinoxacin,CIN
+ciprofloxacin,CIP
+clarithromycin,CLR
+clavulanic acid,CLA
+clinafloxacin,CLX
+clindamycin,CLI
+clofazimine,CLF
+clofoctol,CLF1
+clometocillin,CLM
+clomocycline,CLM1
+clotrimazole,CTR
+cloxacillin,CLO
+colistin,CST
+colistin/polysorbate,COP
+cycloserine,CYC
+dalbavancin,DAL
+danofloxacin,DAN
+dapsone,DPS
+daptomycin,DAP
+delafloxacin,DLX
+delamanid,DLM
+demeclocycline,DEM
+dibekacin,DKB
+dicloxacillin,DCX
+difloxacin,DIF
+dirithromycin,DTM
+doripenem,DOR
+doxycycline,DOX
+econazole,ECO
+enoxacin,ENX
+enrofloxacin,ENR
+enviomycin (tuberactinomycin),ENV
+eperozolid,EPE
+epicillin,EPC
+epiroprim,EPP
+eravacycline,ERV
+ertapenem,ETP
+erythromycin,ERY
+ethambutol,ETH
+ethambutol/isoniazid,ETI
+ethionamide,ETI1
+ethopabate,ETO
+faropenem,FAR
+fidaxomicin,FDX
+finafloxacin,FIN
+flavomycin,FLA
+fleroxacin,FLE
+flomoxef,FLO
+florfenicol,FLR
+flucloxacillin,FLC
+fluconazole,FLU
+flumequine,FLM
+flurithromycin,FLR1
+fosfluconazole,FFL
+fosfomycin,FOF
+fosmidomycin,FMD
+framycetin,FRM
+furazolidone,FRZ
+fusidic acid,FA
+gamithromycin,GAM
+garenoxacin,GRN
+gatifloxacin,GAT
+gemifloxacin,GEM
+gentamicin,GEN
+gentamicin-high,GEH
+gepotidacin,GEP
+grepafloxacin,GRX
+griseofulvin,GRI
+habekacin,HAB
+hachimycin,HCH
+hetacillin,HET
+hygromycin,HYG
+iclaprim,ICL
+imipenem,IPM
+imipenem/edta,IPE
+imipenem/relebactam,I-R
+isavuconazole,ISV
+isepamicin,ISE
+isoconazole,ISO
+isoniazid,INH
+itraconazole,ITR
+josamycin,JOS
+kanamycin,KAN
+kanamycin-high,KAH
+kanamycin/cephalexin,KAC
+ketoconazole,KET
+kitasamycin (leucomycin),KIT
+lasalocid,LAS
+latamoxef,LTM
+lefamulin,LFM
+lenampicillin,LEN
+levofloxacin,LVX
+levonadifloxacin,LND
+linco-spectin (lincomycin/spectinomycin),LSP
+lincomycin,LIN
+linezolid,LZD
+linoprist-flopristin,LFE
+lomefloxacin,LOM
+loracarbef,LOR
+lymecycline,LYM
+mandelic acid,MNA
+marbofloxacin,MAR
+mecillinam (amdinocillin),MEC
+meleumycin,MEL
+meropenem,MEM
+meropenem/nacubactam,MNC
+meropenem/vaborbactam,MVB
+mesulfamide,MES
+metacycline,MTC
+metampicillin,MTM
+methenamine,MTH
+methicillin,MET
+metioprim,MTP
+metioxate,MXT
+metronidazole,MTZ
+mezlocillin,MEZ
+mezlocillin/sulbactam,MSU
+micafungin,MIF
+miconazole,MCZ
+micronomicin,MCR
+midecamycin,MID
+miloxacin,MIL
+minocycline,MIN
+miocamycin,MCM
+monensin sodium,MON
+morinamide,MRN
+moxalactam,MOX
+moxifloxacin,MXF
+mupirocin,MUP
+nacubactam,NAC
+nadifloxacin,NAD
+nafcillin,NAF
+nafithromycin,ZWK
+nalidixic acid,NAL
+narasin,NAR
+neomycin,NEO
+netilmicin,NET
+nicarbazin,NIC
+nifuroquine,NIF
+nifurtoinol,NFR
+nitazoxanide,NTZ
+nitrofurantoin,NIT
+nitrofurazone,NIZ
+nitroxoline,NTR
+norfloxacin,NOR
+norvancomycin,NVA
+novobiocin,NOV
+nystatin,NYS
+ofloxacin,OFX
+oleandomycin,OLE
+omadacycline,OMC
+optochin,OPT
+orbifloxacin,ORB
+oritavancin,ORI
+ormetroprim/sulfamethoxazole,ORS
+ornidazole,ORN
+oxacillin,OXA
+oxolinic acid,OXO
+oxytetracycline,OXY
+p-aminosalicylic acid,PAS
+panipenem,PAN
+paromomycin,PAR
+pazufloxacin,PAZ
+pefloxacin,PEF
+penamecillin,PNM
+penicillin,PEN
+penicillin/novobiocin,PNO
+penicillin/sulbactam,PSU
+penimepicycline,PNM1
+pentisomicin,PIM
+pentizidone,PTZ
+pexiganan,PEX
+phenethicillin,PHE
+phenoxymethylpenicillin,PHN
+pimaricin (natamycin),PMR
+pipemidic acid,PPA
+piperacillin,PIP
+piperacillin/sulbactam,PIS
+piperacillin/tazobactam,TZP
+piridicillin,PRC
+pirlimycin,PRL
+piromidic acid,PIR
+pivampicillin,PVM
+pivmecillinam,PME
+plazomicin,PLZ
+polymyxin b,PMB
+polymyxin B,PMB
+polymyxin b/polysorbate 80,POP
+posaconazole,POS
+pradofloxacin,PRA
+premafloxacin,PRX
+primycin,PRM
+pristinamycin,PRI
+procaine benzylpenicillin,PRB
+propicillin,PRP
+propikacin,PKA
+prothionamide,PTH
+prulifloxacin,PRU
+pyrazinamide,PZA
+pyrazimide,PZA
+quinupristin/dalfopristin,Q-D
+synercid,Q-D
+ractopamine,RAC
+ramoplanin,RAM
+razupenem,RZM
+relebactam,REL
+retapamulin,RTP
+ribociclib,RBC
+ribostamycin,RST
+ridinilazole,RID1
+rifabutin,RFB
+rifampicin,RIF
+rifampicin/isoniazid,RFI
+rifampicin/pyrazinamide/ethambutol/isoniazid,RPEI
+rifampicin/pyrazinamide/isoniazid,RPI
+rifampin,RIF
+rifamycin,RFM
+rifapentine,RFP
+rifaximin,RFX
+ritipenem,RIT
+ritipenem acoxil,RIA
+rokitamycin,ROK
+rolitetracycline,RLT
+rosoxacin,ROS
+roxithromycin,RXT
+rufloxacin,RFL
+salinomycin,SAL
+sarafloxacin,SAR
+sarmoxicillin,SRX
+secnidazole,SEC
+simvastatin/fenofibrate,SMF
+sisomicin,SIS
+sitafloxacin,SIT
+sodium aminosalicylate,SDA
+solithromycin,SOL
+sparfloxacin,SPX
+spectinomycin,SPT
+spiramycin,SPI
+spiramycin/metronidazole,SPM
+streptoduocin,STR
+streptomycin,STR
+streptomycin-high,STH
+streptomycin/isoniazid,STI
+sulbactam,SUL
+sulbenicillin,SBC
+sulconazole,SUC
+sulfachlorpyridazine,SUP
+sulfadiazine,SDI
+sulfadiazine/tetroxoprim,SLT
+sulfadiazine/trimethoprim,SLT1
+sulfadimethoxine,SUD
+sulfadimidine,SDM
+sulfadimidine/trimethoprim,SLT2
+sulfafurazole,SLF
+sulfaisodimidine,SLF1
+sulfalene,SLF2
+sulfamazone,SZO
+sulfamerazine,SLF3
+sulfamerazine/trimethoprim,SLT3
+sulfamethazine,SUM
+sulfamethizole,SLF4
+sulfamethoxazole,SMX
+sulfamethoxazole/trimethoprim,SXT
+sulfamethoxypyridazine,SLF5
+sulfametomidine,SLF6
+sulfametoxydiazine,SLF7
+sulfametrole/trimethoprim,SLT4
+sulfamoxole,SLF8
+sulfamoxole/trimethoprim,SLT5
+sulfanilamide,SLF9
+sulfaperin,SLF10
+sulfaphenazole,SLF11
+sulfapyridine,SLF12
+sulfasuccinamide,SNA
+sulfathiazole,SUT
+sulfathiourea,SLF13
+sulfisoxazole,SXZ
+sulfonamide,SSS
+sulopenem,SLP
+sultamicillin,SLT6
+surotomycin,SUR
+talampicillin,TAL
+talmetoprim,TLP
+tazobactam,TZB
+tebipenem,TBP
+tedizolid,TZD
+teicoplanin,TEC
+teicoplanin-macromethod,TCM
+telavancin,TLV
+telithromycin,TEL
+temafloxacin,TMX
+temocillin,TMC
+terbinafine,TRB
+terconazole,TRC
+terizidone,TRZ
+tetracycline,TET
+tetroxoprim,TXP
+thiacetazone,THA
+thiamphenicol,THI
+thioacetazone/isoniazid,THI1
+tiamulin,TIA
+ticarcillin,TIC
+ticarcillin/clavulanic acid,TIM
+tigecycline,TGC
+tilbroquinol,TBQ
+tildipirosin,TIP
+tilmicosin,TIL
+tinidazole,TIN
+tiocarlide,TCR
+tiodonium chloride,TDC
+tioxacin,TXC
+tizoxanide,TIZ
+tobramycin,TOB
+tobramycin-high,TOH
+tosufloxacin,TFX
+trimethoprim,TMP
+trimethoprim/sulfamethoxazole,SXT
+troleandomycin,TRL
+trospectomycin,TRO
+trovafloxacin,TVA
+tulathromycin,TUL
+tylosin,TYL
+tylvalosin,TYL1
+ulifloxacin (prulifloxacin),PRU1
+vaborbactam,VAB
+vancomycin,VAN
+vancomycin-macromethod,VAM
+viomycin,VIO
+virginiamycine,VIR
+voriconazole,VOR
+xibornol,XBR
+zidebactam,ZID
