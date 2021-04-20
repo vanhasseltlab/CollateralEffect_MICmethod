@@ -1,8 +1,8 @@
 ###analyze results
 library(tidyverse)
-meta_antibio_abbr <- read.csv("data/clean/meta_antibio_abbr.csv", header = T, stringsAsFactors = F)
+meta_antibio_abbr <- read.csv("data/antibiotics_lookup_table.csv", header = T, stringsAsFactors = F, sep = ";")
 load("data/clean/MIC_clean_Escherichia-coli.Rdata")
-load("results/results_Escherichia-coli.Rdata")
+load("results/results_Escherichia-coli_median.Rdata")
 source("scripts/functions_CR.R")
 
 r5 <- results$`0.5`
@@ -73,7 +73,7 @@ dev.off()
 #plots presentation
 library(tidyverse)
 
-meta_antibio_abbr <- read.csv("data/clean/meta_antibio_abbr.csv", header = T, stringsAsFactors = F)
+meta_antibio_abbr <- read.csv("data/meta_antibio_abbr.csv", header = T, stringsAsFactors = F)
 load("data/clean/MIC_clean_Escherichia-coli.Rdata")
 load("results/resultsEscherichia-coli_cond.Rdata")
 
@@ -216,5 +216,18 @@ r5$pair
 r5 %>% group_by(pair)
   
   
+MIC_clean %>% rownames_to_column(var = "strains") %>% 
+  pivot_longer(-strains, names_to = "Antibiotic", values_to = "MIC") %>% 
+  ggplot(aes(x = Antibiotic, y = log2(MIC))) +
+  geom_violin(adjust = 2, fill = "#283C82", colour = "#283C82", trim = T) +
+  theme_bw()+
+  theme(panel.grid = element_blank())
   
   
+MIC_clean$ID <- paste0("I", 1:nrow(MIC_clean))
+MIC_clean %>% pivot_longer(-ID, names_to = "antibiotic", values_to = "MIC") %>% 
+  filter(!is.na(MIC)) %>% mutate(log2MIC = round(log2(MIC))) %>% 
+  ggplot(aes(x = log2MIC)) +
+  geom_histogram() +
+  facet_wrap(~antibiotic, ncol = 5) +
+  theme_bw()

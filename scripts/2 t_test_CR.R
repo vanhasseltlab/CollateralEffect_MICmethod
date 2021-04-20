@@ -6,15 +6,24 @@ source("scripts/functions_CR.R")
 
 ####Import data####
 #Pick species
-species <- "Escherichia-coli"
+species <- "Escherichia coli"
+data_source <- "NIH"
 
-load(paste0("data/clean/MIC_clean_", species,".Rdata"))
+#load(paste0("data/clean/MIC_clean_", species, "_", data_source, ".Rdata"))
+
+load("data/clean/MIC_clean_Ecoli_ARES_NIH_PATRIC.Rdata")
+
+MIC_clean <- NIH_df
+
+#E coli from paper:
+load("~/@Work/Shared/zweplb/LZ3_collateral_sensitivity/data/clean/MIC_clean_Escherichia-coli.Rdata")
 
 ####collateral effect T-test####
 #Pick direction
 CResponse <- "both" #possibilities: "CR", "CS", or "both"
 #Pick dichotomisation criterium
-dich_crit <- "median" #can be an quantile value or "median" where the data is split in (close to) equal halfs 
+dich_crit <- NULL #can be a quantile or MIC value or NULL for option median
+crit_type <- "median" #can be "quant" or "MIC" or  "median"
 
 antibiotics <- colnames(MIC_clean)
 m <- length(antibiotics)
@@ -28,9 +37,26 @@ for (dep in 1:m) {
     if (dep == indep) {
       next
     }
+    
     counter <- counter + 1
     antibiotics <- names(MIC_clean)[c(dep, indep)]
-    t_test <- CETTest(A = MIC_clean[, dep], B = MIC_clean[, indep], crit_type = "median", CE_type = "both")
+    
+    if (length(unique(MIC_clean[, dep])) < 2 | length(unique(MIC_clean[, indep])) < 2) {
+      next
+    }
+    
+    #antibiotics <- c(dep, indep)
+    t_test <- CETTest(A = MIC_clean[, dep], B = MIC_clean[, indep], crit_type = crit_type, CE_type = "both", 
+                      criterium = dich_crit)
+    if (is.null(t_test$statistic)) {
+      t_test_results[counter,] <- data.frame(A = antibiotics[1], B = antibiotics[2], 
+                                                 n = sum(lengths(t_test$data)), n_resi = length(t_test$data$`A|B = r`),
+                                                 tau = t_test$tau, mean_resi = NA, 
+                                                 mean_sens = NA, t = NA,
+                                                 p = NA, stringsAsFactors = F)
+      next
+    }
+    
     t_test_results[counter, ] <- data.frame(A = antibiotics[1], B = antibiotics[2], 
                                     n = sum(lengths(t_test$data)), n_resi = length(t_test$data$`A|B = r`),
                                     tau = t_test$tau, mean_resi = t_test$estimate[1], 
@@ -41,62 +67,40 @@ for (dep in 1:m) {
 t_test_results <- t_test_results %>% 
   mutate(effect_size = mean_resi - mean_sens, 
          p_BY = p.adjust(p, method = "BY"),
-         effect_type = ifelse(t > 0, "CR", "CS"))
+         effect_type = ifelse(t > 0, "CR", "CS")) %>% 
+  filter(!is.na(A))
 
-save(t_test_results, file = paste0('results/results_', species, ".Rdata"))
-
-PlotSignificantEffect(t_test_results, FDR_crit = 0.05, species = species)
-PlotCondDistribution(MIC_clean, t_test_results, t_rank = 1, one_direction = FALSE, CResponse = "CS", FDR_crit = 0.05, whichAB = NULL,
-                     colours = c("#BFC6B8", "#4A5242"))
-PlotCondDistribution(MIC_clean, t_test_results, t_rank = 1, one_direction = FALSE, CResponse = "CR", FDR_crit = 0.05, whichAB = NULL,
-                     colours = c("#BFC6B8", "#4A5242"))
+save(t_test_results, file = paste0('results/results_', species, "_", data_source, "_", dich_crit, ".Rdata"))
 
 
 #Plot results
-#Overview plot
-
-pdf(file = paste0("results/figures/t_allcomparisons_", species, ".pdf"), height = 7*0.8, width = 9*0.8)
-print(PlotSignificantEffect(results, 0.4, FDR_crit = 0.05, species = species))
-print(PlotSignificantEffect(results, 0.5, FDR_crit = 0.05, species = species))
-print(PlotSignificantEffect(results, 0.6, FDR_crit = 0.05, species = species))
-print(PlotSignificantEffect(results, 0.7, FDR_crit = 0.05, species = species))
-print(PlotSignificantEffect(results, 0.8, FDR_crit = 0.05, species = species))
-print(PlotSignificantEffect(results, 0.9, FDR_crit = 0.05, species = species))
-dev.off()
-
-pdf(file = paste0("results/figures/t_allcomparisons_", species, "_noFDR.pdf"), height = 7*0.8, width = 9*0.8)
-print(PlotSignificantEffect(results, 0.4, FDR_crit = 1, species = species))
-print(PlotSignificantEffect(results, 0.5, FDR_crit = 1, species = species))
-print(PlotSignificantEffect(results, 0.6, FDR_crit = 1, species = species))
-print(PlotSignificantEffect(results, 0.7, FDR_crit = 1, species = species))
-print(PlotSignificantEffect(results, 0.8, FDR_crit = 1, species = species))
-print(PlotSignificantEffect(results, 0.9, FDR_crit = 1, species = species))
-dev.off()
+PlotSignificantEffect(t_test_results, FDR_crit = 0.05, species = "PATRIC: E. coli")
+PlotCondDistribution(MIC_clean, t_test_results, t_rank = 1, one_direction = FALSE, CResponse = "CS", FDR_crit = 0.05,
+                     colours = c("#BFC6B8", "#4A5242"))
+PlotCondDistribution(MIC_clean, t_test_results, t_rank = 1, one_direction = FALSE, CResponse = "CR", FDR_crit = 0.05,
+                     colours = c("#BFC6B8", "#4A5242"))
 
 
-#Significant findings plot
-library(gridExtra)
 
-pdf(file = paste0("results/figures/distribution_significant_CS_", species, ".pdf"), height = 7, width = 9)
-for (ra in 1:sum(results[['0.5']]$p_BY < 0.05 & results[['0.5']]$t < 0)) {
-  PlotCRDistributions(MIC_clean, results, 0.5, t_rank = ra, one_direction = TRUE, CResponse = "CS")
-}
-dev.off()
 
-pdf(file = paste0("results/figures/distribution_significant_CR_", species, ".pdf"), height = 7, width = 9)
-for (ra in 1:sum(results[['0.5']]$p_BY < 0.05 & results[['0.5']]$t > 0)) {
-  PlotCRDistributions(MIC_clean, results, 0.5, t_rank = ra, one_direction = TRUE, CResponse = "CR")
+
+cairo_pdf("results/figures/ARES_results.pdf", width = 9, height =  7, onefile = T)
+for (species in c("Escherichia coli", "Pseudomonas aeruginosa", "Klebsiella pneumoniae", "Stenotrophomonas maltophilia")) {
+  load(paste0('results/results_', species, "_ARES_", dich_crit, ".Rdata"))
+  load(paste0("data/clean/MIC_clean_", species, "_ARES.Rdata"))
+  print(PlotSignificantEffect(t_test_results, FDR_crit = 0.05, species = species))
+  Figure4A <- PlotCondDistribution(MIC_clean, t_test_results, t_rank = 1, one_direction = FALSE, CResponse = "CS", FDR_crit = 0.05,
+                                   colours = c("#BFC6B8", "#4A5242"), separate_plots = TRUE, ran = c(-7, 9)) 
+  
+  Figure4B <- PlotCondDistribution(MIC_clean, t_test_results, t_rank = 1, one_direction = FALSE, CResponse = "CR", FDR_crit = 0.05,
+                                   colours = c("#BFC6B8", "#4A5242"), separate_plots = TRUE, ran = c(-7, 9))
+  
+  grid.arrange(Figure4A[[1]] + labs(tag = "CS"), Figure4A[[2]] + labs(tag = " "), 
+               Figure4B[[1]] + labs(tag = "CR"), Figure4B[[2]] + labs(tag = " "), ncol = 2, nrow = 2)
+  
 }
 dev.off()
 
 
-pdf(file = paste0("results/figures/distribution_twoway_significant_CS_", species, ".pdf"), height = 7, width = 9)
-for (ra in 1:sum(results[['0.5']]$p_BY < 0.05 & results[['0.5']]$t < 0))  {
-  PlotCRDistributions(MIC_clean, results, 0.5, t_rank = ra, one_direction = FALSE, CResponse = "CS")
-}
-dev.off()
 
-pdf(file = paste0("results/figures/distribution_stacked_", species, ".pdf"), height = 5, width = 9)
-  PlotStackDistribution(MIC_clean, results, 0.5, t_rank = 1, one_direction = FALSE, CResponse = "CS")
-  PlotStackDistribution(MIC_clean, results, 0.5, t_rank = 1, one_direction = FALSE, CResponse = "CR")
-dev.off()
+

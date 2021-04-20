@@ -2,11 +2,12 @@
 
 #Libraries
 library(tidyverse)
-source("scripts/functions_CR.R")
+#source("scripts/functions_CR.R")
+library(collatRal)
 
 ####Import data####
 #Load abbreviations file
-meta_antibio_abbr <- read.csv("data/clean/meta_antibio_abbr.csv", header = T, stringsAsFactors = F)
+meta_antibio_abbr <- read.csv("data/meta_antibio_abbr.csv", header = T, stringsAsFactors = F)
 
 #Pick species
 species <- "Escherichia-coli"
@@ -37,7 +38,7 @@ MIC_df <- raw_MIC %>%
          key = paste(genome_name, genome_id, abbreviation, sep = "_")) %>% 
   mutate(logMIC = log2(MIC)) %>% 
 #remove duplicate rows
-  distinct(MIC, genome_id, abbreviation, .keep_all = TRUE)
+  distinct(MIC, key, .keep_all = TRUE)
 
 missing_abb <- is.na(MIC_df$abbreviation)
 if (any(missing_abb)) {
@@ -61,10 +62,13 @@ MIC_table <- MIC_df %>%
 n_antibiotic <- apply(MIC_table, 2, function(x) sum(!is.na(x)))
 MIC_clean <- MIC_table %>% 
   select(which(n_antibiotic > na_remove)) %>% 
-  filter_all(any_vars(!is.na(.)))
+  filter(rowSums(!is.na(.)) > 1)
+ # filter_all(any_vars(!is.na(.)))
 
 #Save cleaned data for further use
 save(MIC_clean, file = paste0("data/clean/MIC_clean_", species,".Rdata"))
+dim(MIC_clean)
+
 
 ####Data exploration####
 #Create data frame with number of observations
