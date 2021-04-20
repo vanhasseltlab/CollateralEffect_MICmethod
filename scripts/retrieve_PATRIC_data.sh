@@ -1,21 +1,10 @@
 #!/bash/bin
-# Show usage information:
-#=============================================================================================================
-# 
-# 	  	   FILE: YH_GetDataPATRIC.sh
-#
-#	        USAGE: use Highway_script.R to call this file 
-#		
-#   DESCRIPTION: Retrieving datasets from PATRIC with PCLI
-#
-# 	    OPTIONS: ___
-# 		     BUGS: ___
-#	        NOTES: Run this file with the YH_Start-pipeline
-#	       AUTHOR: Yob Haakman
-# ORGANISZATION: The Leiden Academic Centre of Drug Research (LACDR)
-#	      CREATED: Monday 05 November 2018
-#
-#============================================================================================================
+
+################################################################################
+# Data retrieval from PATRIC for replication of "Identification of collateral  #
+# effects of antibiotic resistance in population surveillance data"            #
+# Authors: Yob Haakman & Laura B. Zwep                                         #
+################################################################################
 
 
 ##################----IMPORT VARIABLES---############################################
