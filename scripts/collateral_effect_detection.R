@@ -5,12 +5,13 @@
 # Author: Laura B. Zwep                                                        #
 ################################################################################
 
-######  Libraries #####
+######  Packages  #####
 library(tidyverse)
-library(collatRal)
 library(pwr)
 library(egg)
 library(grid)
+#custom package available on github (www.github.com/vanhasseltlab/collatRal)
+library(collatRal) 
 
 #####  Import data  #####
 #Load information files antibiotics
@@ -21,7 +22,7 @@ suppl_table_1 <- read.csv("data/suppl_table_1.csv", header = T, sep = ",",
 #Choose minimal number of MIC measurements to include drug
 na_remove <- 200
 
-#Load the raw data (long format) 
+#Load the raw data (long format) from retrieve_PATRIC_data.sh
 raw_MIC <- read.table("data/raw/Escherichia-coli.txt", header = T, sep = "\t", 
                       dec = ",", stringsAsFactors = F, na.strings = "")
 colnames(raw_MIC) <- sapply(strsplit(colnames(raw_MIC), "\\."), function(x) x[2])
@@ -36,7 +37,7 @@ MIC_df <- raw_MIC %>%
          genome_id = str_replace_all(genome_id, "\\.", "_")) %>% 
   #add antibiotic abbreviations
   left_join(meta_antibio_abbr, by = "antibiotic") %>% 
-  #take MIC value from antibiotic (not beta lactamase blocker)
+  #take MIC value from antibiotic (not the beta-lactamase blocker)
   mutate(MIC = sapply(strsplit(measurement_value, "/"), 
                       function(x) as.numeric(x[1]))) %>% 
   select(genome_id, abbreviation, MIC)
@@ -53,29 +54,35 @@ MIC_clean <- MIC_table %>%
   filter(rowSums(!is.na(.)) > 1)
 
 #Save cleaned data for further use
+if (!dir.exists("data/clean")) {
+  dir.create("data/clean")
+}
 save(MIC_clean, file = paste0("data/clean/MIC_clean_Escherichia-coli.Rdata"))
+
 
 #####  Data analysis #####
 t_test_results <- collateral_mult_test(MIC_clean)
 
 
-#####  Create figures  #####
+#####  Create figure  #####
+if (!dir.exists("figures")) {
+  dir.create("figures")
+}
 # Figure 3
 #create_ordering according to antibiotic class
-suppl_table_1 <- read.csv("data/suppl_table_1.csv", header = T, stringsAsFactors = F, sep = ",")
 suppl_table_1 <- suppl_table_1 %>% arrange(target, class, ab)
 order_abs <- suppl_table_1$ab
 t_test_results_class <- t_test_results %>% 
   mutate(A = factor(A, levels = order_abs)) %>% 
   mutate(B = factor(B, levels = order_abs))
-
-var_i <- suppl_table_1$class
-bold_lines <- cumsum(as.vector(table(var_i)[unique(var_i)]))[-length(unique(var_i))] + 0.5
+#create bold lines between classes
+class_i <- suppl_table_1$class
+bold_lines <- cumsum(as.vector(table(class_i)[unique(class_i)]))[-length(unique(class_i))] + 0.5
 figure3 <- plot_heatmap_CE(t_test_results_class, sign_criterium = 0.05) +
   geom_hline(yintercept = bold_lines, size = 1) +
   geom_vline(xintercept = bold_lines, size = 1)
 
-cairo_pdf("paper/figures/Figure3_overview_all_tests.pdf", width = 9, height =  7)
+cairo_pdf("figures/Figure3_overview_all_tests.pdf", width = 9, height =  7)
 print(figure3)
 dev.off()
 
@@ -85,29 +92,22 @@ figure4b <- plot_histogram_CE(MIC_clean$ETP, MIC_clean$CFZ, MIC_range = c(-6, 7)
 figure4c <- plot_histogram_CE(MIC_clean$ETP, MIC_clean$MEM, MIC_range = c(-6, 7))
 figure4d <- plot_histogram_CE(MIC_clean$MEM, MIC_clean$ETP, MIC_range = c(-6, 7))
 
-pdf("paper/figures/Figure4_CSCR_t-test.pdf", width = 7, height = 6.5)
+pdf("figures/Figure4_CSCR_t-test.pdf", width = 7, height = 6.5)
 gridExtra::grid.arrange(figure4a + labs(tag = "A"), figure4b + labs(tag = "B"), 
              figure4c + labs(tag = "C"), figure4d + labs(tag = "D"), ncol = 2, 
              nrow = 2)
 dev.off()
 
 
-
-
 ################################################################################
 # Power analysis                                                               #
 ################################################################################
-
 #####  Power analysis  #####
 #power analysis CS test
-
-library(tidyverse)
-#columns n_total, n1, n2, frac_disbalance, power, effect size
-
 total_n <- c(20, 30, 50, 70, 100, 200, 500, 1000, 2000)
 fracs <- seq(0.1, 0.5, by = 0.05)
-sds <- seq(0.6, 2.4, by = 0.2) #based on s in MIC clean E coli PATRIC
-effect_sizes <- seq(0, 2, by = 0.05) #based on t results E coli PATRIC
+sds <- seq(0.6, 2.4, by = 0.2) #based on sd in MIC clean
+effect_sizes <- seq(0, 2, by = 0.05) #based on T-test results
 
 power_results <- expand.grid(total_n, fracs, effect_sizes, sds) %>% 
   rename(n = Var1, balance = Var2, effect_size = Var3, sd = Var4) %>% 
@@ -123,8 +123,7 @@ for (i in 1:nrow(power_results)) {
 }
 
 
-
-#####  Create figures  #####
+#####  Create figure  #####
 bl <- colorRampPalette(c("#BFD3E6", "#8C96C6", "#88419D", "black"))(9)
 plot_n <- power_results %>% 
   filter(abs(sd - 1.8) < 0.01 & balance == 0.5) %>% 
@@ -160,49 +159,25 @@ plot_sd <- power_results %>%
   theme(panel.grid.minor.x = element_blank(), axis.title = element_blank())
 
 
-pdf("paper/figures/Figure5_power_analysis.pdf", width = 12, height = 5, onefile = FALSE)
-egg::ggarrange(plot_n, plot_disbalance, plot_sd, nrow = 1, bottom = "Effect size (log2(FC))", 
-          left = "Power", labels = LETTERS[1:3], 
+pdf("figures/Figure5_power_analysis.pdf", width = 12, height = 5, onefile = FALSE)
+egg::ggarrange(plot_n, plot_disbalance, plot_sd, bottom = "Effect size (log2(FC))", 
+               nrow = 1, left = "Power", labels = LETTERS[1:3], 
           label.args = list(gp = grid::gpar(font = 1), hjust = 1, vjust = 1.5))
 dev.off()
+
 
 ################################################################################
 # Test different values of tau                                                 #
 ################################################################################
-
-t_results_quants <- data.frame()
-criteria <- c(seq(0.2, 0.9, 0.1), 0.95)
-for (i in 1:length(criteria)) {
-  t_test_crit <- collateral_mult_test(MIC_clean, crit_type = "quant", criterium = criteria[i])
-  t_test_crit$quantile <- criteria[i]
-  t_test_crit$is_median <- t_test_crit$tau == t_test_results$tau
-  t_results_quants <- rbind(t_results_quants, t_test_crit)
-}
-
-figure6 <- t_results_quants %>% 
-  ggplot(aes(x = quantile, y = t, colour = B)) +
-    geom_hline(yintercept = 0, colour = "black") +
-    geom_line(alpha = 0.7) +
-    geom_point(data = t_results_quants[t_results_quants$is_median, ], 
-               alpha = 0.9, stroke = 0, size = 1.8) +
-    labs(x = "Dichotomization quantile", y = "T-value", 
-         colour = "Splitting antibiotic (B)") +
-    facet_wrap(~ A, nrow = 5) +
-    theme_bw() + 
-   theme(panel.grid.minor.x = element_blank())
-pdf("paper/figures/Figure6_effect_of_dichotomization.pdf", width = 8.5, height = 10)
-print(figure6)
-dev.off()
-
-### try another way! #####
-
+# Get T-test results over all possible values of tau
 t_results_taus <- data.frame()
-m <- length(names(MIC_clean)) -1
+m <- length(names(MIC_clean)) - 1
 for (b in names(MIC_clean)) {
   tau_values <- log2(sort(unique(MIC_clean[, b]))[-1])
   t_results_b <- as.data.frame(matrix(NA, nrow = m*length(tau_values), ncol = 12))
   for (i in 1:length(tau_values)) {
-    t_test_crit <- collateral_mult_test(MIC_clean, crit_type = "log2_MIC", criterium = tau_values[i])
+    t_test_crit <- collateral_mult_test(MIC_clean, crit_type = "log2_MIC", 
+                                        criterium = tau_values[i])
     t_results_b[(((i - 1)*m) + 1):(i*m), ] <- t_test_crit[t_test_crit$B == b, ]
   }
   colnames(t_results_b) <- colnames(t_test_crit)
@@ -213,17 +188,18 @@ for (b in names(MIC_clean)) {
 
 t_results_taus <- rbind(t_results_taus, t_test_results %>% mutate(is_median = TRUE))
 
+#####  Create figure  #####
 figure6 <- t_results_taus %>% 
   ggplot(aes(x = tau, y = t, colour = A)) +
   geom_hline(yintercept = 0, colour = "black") +
   geom_line(alpha = 0.7) +
   geom_point(data = t_results_taus[t_results_taus$is_median, ], 
              alpha = 0.9, stroke = 0, size = 1.8) +
-  labs(x = "Dichotomization criterium", y = "T-value", 
+  labs(x = expression("Dichotomization criterium ("*log[2]*"(MIC))"), y = "T-value", 
        colour = "Testing antibiotic (A)") +
   facet_wrap(~ B, nrow = 5, scales = "free_x") +
   theme_bw() + 
   theme(panel.grid.minor.x = element_blank())
-pdf("paper/figures/Figure6_effect_of_dichotomization.pdf", width = 8.5, height = 10)
+pdf("figures/Figure6_effect_of_dichotomization.pdf", width = 8.5, height = 10)
 print(figure6)
 dev.off()
