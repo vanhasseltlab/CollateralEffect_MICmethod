@@ -47,7 +47,7 @@ MIC_table <- MIC_df %>%
   pivot_wider(names_from = abbreviation, values_from = MIC) %>% 
   column_to_rownames(var = "genome_id")
 
-#Remove antibiotics with to many na's
+#Remove antibiotics with too many na's
 n_antibiotic <- apply(MIC_table, 2, function(x) sum(!is.na(x)))
 MIC_clean <- MIC_table %>% 
   select(which(n_antibiotic > na_remove)) %>% 
@@ -57,12 +57,11 @@ MIC_clean <- MIC_table %>%
 if (!dir.exists("data/clean")) {
   dir.create("data/clean")
 }
-save(MIC_clean, file = paste0("data/clean/MIC_clean_Escherichia-coli.Rdata"))
+save(MIC_clean, file = "data/clean/MIC_clean_Escherichia-coli.Rdata")
 
 
 #####  Data analysis #####
 t_test_results <- collateral_mult_test(MIC_clean)
-
 
 #####  Create figure  #####
 if (!dir.exists("figures")) {
@@ -92,7 +91,7 @@ figure4b <- plot_histogram_CE(MIC_clean$ETP, MIC_clean$CFZ, MIC_range = c(-6, 7)
 figure4c <- plot_histogram_CE(MIC_clean$ETP, MIC_clean$MEM, MIC_range = c(-6, 7))
 figure4d <- plot_histogram_CE(MIC_clean$MEM, MIC_clean$ETP, MIC_range = c(-6, 7))
 
-pdf("figures/Figure4_CSCR_t-test.pdf", width = 7, height = 6.5)
+cairo_pdf("figures/Figure4_CSCR_t-test.pdf", width = 7, height = 6.5)
 gridExtra::grid.arrange(figure4a + labs(tag = "A"), figure4b + labs(tag = "B"), 
              figure4c + labs(tag = "C"), figure4d + labs(tag = "D"), ncol = 2, 
              nrow = 2)
@@ -121,7 +120,6 @@ for (i in 1:nrow(power_results)) {
                              d = row_i$effect_size/row_i$sd, sig.level = 0.05)
   power_results[i, "power"] <- power_disb$power
 }
-
 
 #####  Create figure  #####
 bl <- colorRampPalette(c("#BFD3E6", "#8C96C6", "#88419D", "black"))(9)
@@ -160,7 +158,7 @@ plot_sd <- power_results %>%
 
 
 pdf("figures/Figure5_power_analysis.pdf", width = 12, height = 5, onefile = FALSE)
-egg::ggarrange(plot_n, plot_disbalance, plot_sd, bottom = "Effect size (log2(FC))", 
+egg::ggarrange(plot_n, plot_disbalance, plot_sd, bottom = "Effect size (log2 FC)", 
                nrow = 1, left = "Power", labels = LETTERS[1:3], 
           label.args = list(gp = grid::gpar(font = 1), hjust = 1, vjust = 1.5))
 dev.off()
@@ -186,20 +184,25 @@ for (b in names(MIC_clean)) {
   t_results_taus <- rbind(t_results_taus, t_results_b)
 }
 
-t_results_taus <- rbind(t_results_taus, t_test_results %>% mutate(is_median = TRUE))
+df_plot_taus <- rbind(t_results_taus, t_test_results %>% 
+                          mutate(is_median = TRUE)) %>% 
+  mutate(balance = ifelse(n_high/n > 0.5, 1 - n_high/n, n_high/n)*2)
 
 #####  Create figure  #####
-figure6 <- t_results_taus %>% 
-  ggplot(aes(x = tau, y = t, colour = A)) +
+figure6 <- df_plot_taus %>% 
+  filter(!is.na(effect_size)) %>% 
+  ggplot(aes(x = tau, y = effect_size, colour = A, alpha = balance)) +
   geom_hline(yintercept = 0, colour = "black") +
-  geom_line(alpha = 0.7) +
-  geom_point(data = t_results_taus[t_results_taus$is_median, ], 
-             alpha = 0.9, stroke = 0, size = 1.8) +
-  labs(x = expression("Dichotomization criterium ("*log[2]*"(MIC))"), y = "T-value", 
-       colour = "Testing antibiotic (A)") +
+  geom_line() +
+  scale_alpha_continuous(range = c(0.1, 0.99)) +
+  geom_point(data = df_plot_taus[df_plot_taus$is_median, ], stroke = 0, 
+             size = 1.8) +
+  labs(x = expression("Dichotomization criterion ("*log[2]*"(MIC))"), 
+       y = expression("Estimated effect size ("*log[2]*" FC)"), 
+       colour = "Testing antibiotic (A)", alpha = "Group size equality") +
   facet_wrap(~ B, nrow = 5, scales = "free_x") +
   theme_bw() + 
   theme(panel.grid.minor.x = element_blank())
-pdf("figures/Figure6_effect_of_dichotomization.pdf", width = 8.5, height = 10)
+pdf("figures/Figure6_effect_of_dichotomization.pdf", width = 8, height = 9)
 print(figure6)
 dev.off()
